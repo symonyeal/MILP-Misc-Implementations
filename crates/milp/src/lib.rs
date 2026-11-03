@@ -66,6 +66,9 @@ pub struct Model {
     pub a: Vec<f64>,
     pub qc: Vec<(usize, usize, f64)>,
     pub qa: Vec<(usize, usize, usize, f64)>,
+    /// SCIP's row tolerance when set (its default is 1e-6). A nonlinear row's slack can carry into
+    /// the objective; a tighter tolerance removes that, at a cost in time on nonconvex models.
+    pub feastol: Option<f64>,
 }
 
 impl Model {

@@ -27,6 +27,10 @@ fn col(s: &mut russcip::Model<russcip::ProblemCreated>, l: f64, u: f64, c: f64, 
 pub fn solve(m: &Model) -> Sol {
     let s = russcip::Model::default();
     let s = if std::env::var_os("MILP_LOG").is_some() { s } else { s.hide_output() };
+    let s = match m.feastol {
+        Some(t) => s.set_real_param("numerics/feastol", t).expect("numerics/feastol"),
+        None => s,
+    };
     let mut s = if m.max { s.maximize() } else { s.minimize() };
     let x: Vec<Variable> = (0..m.n()).map(|j| col(&mut s, m.l[j], m.u[j], m.c[j], m.int[j])).collect();
     let mut q: Vec<Vec<(usize, usize, f64)>> = vec![Vec::new(); m.m()];

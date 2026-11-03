@@ -854,6 +854,123 @@ def relief(r):
     return case("relief", nb, data, oracle(r / nb))
 
 
+def uc(r):
+    """The notebook reads its CSVs by URL through pandas; this reads the checkout's copies with
+    its rules: demand of 1 July 2011, 2011 costs by fuel type, 2007 July health costs for the three
+    plants that have them (0 elsewhere), shut-down cost = start-up cost."""
+    nb = "power_generation/optimize_power_schedule.ipynb"
+    base = r / "power_generation"
+
+    def rows(f):
+        with open(base / f, encoding="utf-8-sig", newline="") as h:
+            return list(csv.DictReader(h))
+
+    load = {
+        int(x["HOUR"]): float(x["LOAD"])
+        for x in rows("demand.csv")
+        if (x["YEAR"], x["MONTH"], x["DAY"]) == ("2011", "7", "1")
+    }
+    hours = sorted(load)
+    cost = {
+        f: next(x for x in rows(f"small_plant_data/{f}.csv") if x["year"] == "2011")
+        for f in ("fuel_costs", "operating_costs", "startup_costs")
+    }
+    health = {
+        (x["Plant"], int(x["Hour"])): float(x["Cost"])
+        for x in rows("small_plant_data/health_costs.csv")
+        if (x["Year"], x["Day"]) == ("2007", "1")
+    }
+    plants = []
+    for x in rows("small_plant_data/plant_capacities.csv"):
+        i, ft, nuc = x["Plant"], x["FuelType"], x["PlantType"] == "NUCLEAR"
+        plants.append(
+            {
+                "name": i,
+                "nuclear": nuc,
+                "cap": float(x["Capacity"]),
+                "min": 0.8 if nuc else 0.01,
+                "ramp": 1 if i in ("BIOMASS", "GAS", "HYDRO", "OIL") else 0.2 if nuc else 0.25,
+                "fuel": float(cost["fuel_costs"][ft]),
+                "oper": float(cost["operating_costs"][ft]),
+                "start": float(cost["startup_costs"][ft]),
+                "stop": float(cost["startup_costs"][ft]),
+                "health": [health.get((i, h), 0.0) for h in hours],
+            }
+        )
+    # The notebook builds and solves the same model twice.
+    return case("uc", nb, {"plants": plants, "demand": [load[h] for h in hours]}, oracle(r / nb)[:1])
+
+
+def battery(r):
+    """Both variants on the notebook's instance; it runs only "S" and saves no output."""
+    nb = "battery_scheduling/battery_scheduling.ipynb"
+    g = params(r / nb)
+    load, pv, imp, exp = g["default_24h_profiles"]()
+    data = {"dt": g["dt_h"], "load": load, "pv": pv, "import": imp, "export": exp, "e_max": g["E_max_kwh"]}
+    data |= {"p_ch": g["P_ch_max_kw"], "p_dis": g["P_dis_max_kw"], "eta_ch": g["eta_ch"], "eta_dis": g["eta_dis"]}
+    data |= {"soc0": g["SoC0_kwh"], "soc_end": g["SoC_terminal"], "kappa": g["kappa_cyc"], "beta": g["beta"]}
+    return [case("battery", nb, {"variant": k} | data, []) for k in ("S", "LGS")]
+
+
+def aviation(r):
+    """The notebook's data steps without pandas: the four airports of highest degree in the
+    flight multigraph (ties in first-seen order, as networkx and a stable sort give), the flights
+    among them, and each flight's revenue, the sum of cost x passengers over its itineraries."""
+    nb = "aviation_planning/airlineplanning.ipynb"
+
+    def rows(f):
+        with open(r / "aviation_planning/data" / f, encoding="utf-8-sig", newline="") as h:
+            return list(csv.DictReader(h))
+
+    plan = rows("flight_rotations_2006-07-01.csv")
+    deg = Counter()
+    for x in plan:
+        deg[x["ori"]] += 1
+        deg[x["des"]] += 1
+    order = list(dict.fromkeys(a for x in plan for a in (x["ori"], x["des"])))
+    top = sorted(order, key=lambda a: -deg[a])[:4]
+    plan = [x for x in plan if x["ori"] in top and x["des"] in top]
+    rev = Counter()
+    for x in rows("flight_iterinaries.csv"):
+        rev[int(float(x["flight"]))] += float(x["cost"]) * float(x["n_pass"])
+    start = {x["aircraft"]: x["airport"] for x in rows("starting_positions.csv")}
+    end = {x["aircraft"]: x["airport"] for x in rows("ending_positions.csv")}
+
+    def mins(t):
+        h, m = t.split(":")
+        return 60 * int(h) + int(m)
+
+    craft = list(dict.fromkeys(x["aircraft"] for x in plan))
+    aircraft = [
+        {
+            "name": a,
+            "start": start[a],
+            "end": end[a],
+            "flights": [
+                {
+                    "id": int(x["flight"]),
+                    "ori": x["ori"],
+                    "des": x["des"],
+                    "dep": mins(x["start_time"]),
+                    "arr": mins(x["end_time"]),
+                    "revenue": rev[int(x["flight"])],
+                }
+                for x in plan
+                if x["aircraft"] == a
+            ],
+        }
+        for a in sorted(craft)
+    ]
+    note = (
+        "the notebook lets no flight at 00:00 be first, chains a flight landing after midnight to that "
+        "morning's flights, and counts source and sink in the airport caps; the port corrects all three. "
+        "Gurobi's saved log has 1920 columns where the notebook's cells build 1930 from this data, so it "
+        "came from other data"
+    )
+    data = {"airports": top, "alpha": 0.5, "aircraft": aircraft}
+    return case("aviation", nb, data, oracle(r / nb), note, fixed=True)
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -910,6 +1027,10 @@ def main():
         "yield_management": yields(r),
         "marketing_campaign": campaign(r),
         "food_program": relief(r),
+        "power_generation": uc(r),
+        "battery_s": battery(r)[0],
+        "battery_lgs": battery(r)[1],
+        "aviation_planning": aviation(r),
     }
     for k, d in enumerate(covid(r), 1):
         cases[f"covid19_facility_{k}"] = d
