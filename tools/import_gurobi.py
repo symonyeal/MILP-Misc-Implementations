@@ -434,6 +434,54 @@ def manpower(r):
     return case("manpower", nb, data, oracle(r / nb))
 
 
+def farm(r):
+    nb = "farm_planning/farm_planning.ipynb"
+    g = params(r / nb)
+    keys = [
+        "sb_yield",
+        "housing_cap",
+        "gr_intake",
+        "sb_intake",
+        "hf_land",
+        "land_cap",
+        "hf_labor",
+        "cow_labor",
+        "gr_labor",
+        "sb_labor",
+        "labor_cap",
+        "cow_decay",
+        "hf_decay",
+        "initial_hf",
+        "initial_cows",
+        "birthrate",
+        "min_final_cows",
+        "max_final_cows",
+        "bl_price",
+        "hf_price",
+        "cow_price",
+        "milk_price",
+        "gr_price",
+        "sb_price",
+        "gr_cost",
+        "sb_cost",
+        "overtime_cost",
+        "regular_time_cost",
+        "hf_cost",
+        "cow_cost",
+        "gr_land_cost",
+        "sb_land_cost",
+        "installment",
+    ]
+    data = {k: g[k] for k in keys}
+    data |= {
+        "years": len(g["years"]),
+        "ages": len(g["ages"]),
+        "gr_area": [g["gr_area"][l] for l in g["lands"]],
+        "gr_yield": [g["gr_yield"][l] for l in g["lands"]],
+    }
+    return case("farm", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -471,6 +519,7 @@ def main():
         "best_subset": best_subset(r),
         "economic_planning": economic(r),
         "manpower_planning": manpower(r),
+        "farm_planning": farm(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")

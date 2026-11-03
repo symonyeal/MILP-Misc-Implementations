@@ -20,6 +20,7 @@ pub mod cutstock;
 pub mod economic;
 pub mod facility;
 pub mod factory;
+pub mod farm;
 pub mod fit;
 pub mod food;
 pub mod manpower;
@@ -122,6 +123,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "cutstock" => cutstock::run(&de(v)?),
         "economic" => economic::run(&de(v)?),
         "facility" => facility::run(&de(v)?),
+        "farm" => farm::run(&de(v)?),
         "factory" => factory::run(&de(v)?),
         "fit" => fit::run(&de(v)?),
         "food" => food::run(&de(v)?),
@@ -148,6 +150,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "cutstock" => cutstock::model(&de(v)?),
         "economic" => economic::model(&de(v)?),
         "facility" => facility::model(&de(v)?),
+        "farm" => farm::model(&de(v)?),
         "factory" => factory::model(&de(v)?).0,
         "fit" => fit::model(&de(v)?, false),
         "food" => food::model(&de(v)?).0,
