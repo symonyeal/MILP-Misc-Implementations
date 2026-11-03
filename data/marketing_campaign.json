@@ -1,0 +1,16 @@
+{
+ "case": "campaign",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/marketing_campaign_optimization/marketing_campaign_optimization.ipynb",
+ "oracle": [-3994000.0, 6100.0, 6000.0],
+ "data": {
+  "products": ["p1", "p2"],
+  "clusters": [
+    {"profit": [2000, 1000], "cost": [200, 100], "customers": [[[2050, 1050], [205, 105]], [[1950, 950], [195, 95]], [[2000, 1000], [200, 100]], [[2100, 1100], [210, 110]], [[1900, 900], [190, 90]]]},
+    {"profit": [3000, 2000], "cost": [300, 200], "customers": [[[3000, 2000], [300, 200]], [[2900, 1900], [290, 190]], [[3050, 2050], [305, 205]], [[3100, 3100], [310, 310]], [[2950, 2950], [295, 295]]]}
+   ],
+  "min_offers": [2, 2],
+  "roi": 0.2,
+  "budget": 200,
+  "penalty": 10000
+ }
+}

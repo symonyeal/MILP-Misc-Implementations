@@ -771,6 +771,89 @@ def rental(r, k):
     return case("rental", nb, data, oracle(r / nb), note, fixed=k == 2)
 
 
+def yields(r):
+    nb = "yield_management/yield_management.ipynb"
+    g = params(r / nb)
+    cl, op, sc = g["classes"], g["options"], g["scenarios"]
+    data = {
+        "classes": cl,
+        "prob": [g["prob"][s] for s in sc],
+        "price": [[[g[f"price{w}"][c, h] for h in op] for c in cl] for w in (1, 2, 3)],
+        "fcst": [[[[g[f"fcst{w}"][s, c, h] for h in op] for c in cl] for s in sc] for w in (1, 2, 3)],
+        "actual": [[[g[f"demand{w}"][c, h] for h in op] for c in cl] for w in (1, 2, 3)],
+        "cap": [g["cap"][c] for c in cl],
+        "plane": g["cost"],
+        "planes": 6,
+    }
+    note = (
+        "the notebook's week-3 re-solve reads week 2's chosen option from the week-2 decision of week-1 scenario j "
+        "for week-2 scenario j; the port fixes the one decision taken, with the same four optima"
+    )
+    return case("yields", nb, data, oracle(r / nb), note)
+
+
+def campaign(r):
+    nb = "marketing_campaign_optimization/marketing_campaign_optimization.ipynb"
+    g = model_locals(r / nb)[-1]  # the globals at the last model: the customer data come after the first
+    pr, cl = g["products"], g["clusters"]
+    cs = {k: [i for kk, i, _ in g["ccp"] if kk == k] for k in cl}
+    cl_data = [
+        {
+            "profit": [g["expected_profit"][k, j] for j in pr],
+            "cost": [g["expected_cost"][k, j] for j in pr],
+            "customers": [
+                [[g["customer_profit"][k, i, j] for j in pr], [g["customer_cost"][k, i, j] for j in pr]]
+                for i in dict.fromkeys(cs[k])
+            ],
+        }
+        for k in cl
+    ]
+    data = {"products": pr, "clusters": cl_data, "min_offers": [g["min_offers"][j] for j in pr]}
+    data |= {"roi": g["R"], "budget": g["budget"], "penalty": g["M"]}
+    return case("campaign", nb, data, oracle(r / nb))
+
+
+def relief(r):
+    """The notebook reads its CSVs by URL through pandas; this reads the checkout's copies with the
+    same rules: a name's suffix (" S", "TS", " D") gives its role, a repeated link keeps its last
+    cost, a supplier without a local price pays the international one."""
+    nb = "food_program/food_supply.ipynb"
+
+    def rows(f):
+        with open(r / "food_program/data" / f, encoding="utf-8-sig", newline="") as h:
+            return list(csv.DictReader(h))
+
+    nodes = rows("node_types.csv")
+    sup = {n["Name"][:-2] for n in nodes if n["Name"].endswith(" S")}
+    dem = {n["Name"][:-2]: float(n["Demand"]) for n in nodes if n["Name"].endswith("D")}
+    hub = {n["Name"][:-3] for n in nodes if n["Name"].endswith("TS")}
+    t = {(e["A"], e["B"]): float(e["tCost"]) for e in rows("edge_costs.csv")}
+    req = rows("nutrient_requirements.csv")[0]
+    nut = [u for u in req if u != "Type"]
+    fn = rows("food_nutrition.csv")
+    foods = [x["Food"] for x in fn]
+    intl = {x["Food"]: float(x["InternationalPrice"]) for x in rows("food_internationalprice.csv")}
+    p = {(x["supplier"], x["food"]): float(x["Mean"]) for x in rows("food_costs.csv")}
+    cities = sorted(sup | set(dem) | hub)
+    data = {
+        "cities": [
+            {
+                "name": i,
+                "demand": dem.get(i, 0.0),
+                "price": [p.get((i, f), intl[f]) for f in foods] if i in sup else None,
+            }
+            for i in cities
+        ],
+        "edges": [[a, b, c] for (a, b), c in t.items()],
+        "foods": foods,
+        "nutrients": nut,
+        "need": [float(req[u]) for u in nut],
+        "content": [[float(x[u] or 0) for u in nut] for x in fn],
+        "cap": 1e7,
+    }
+    return case("relief", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -824,6 +907,9 @@ def main():
         "resource_assignment": rap(r),
         "car_rental_1": rental(r, 1),
         "car_rental_2": rental(r, 2),
+        "yield_management": yields(r),
+        "marketing_campaign": campaign(r),
+        "food_program": relief(r),
     }
     for k, d in enumerate(covid(r), 1):
         cases[f"covid19_facility_{k}"] = d
