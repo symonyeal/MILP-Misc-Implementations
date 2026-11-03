@@ -24,11 +24,13 @@ pub mod farm;
 pub mod fit;
 pub mod food;
 pub mod manpower;
+pub mod mining;
 pub mod network;
 pub mod opencast;
 pub mod playlist;
 pub mod pooling;
 pub mod portfolio;
+pub mod refinery;
 pub mod subset;
 pub mod tsp;
 pub mod workforce;
@@ -128,11 +130,13 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "fit" => fit::run(&de(v)?),
         "food" => food::run(&de(v)?),
         "manpower" => manpower::run(&de(v)?),
+        "mining" => mining::run(&de(v)?),
         "network" => network::run(&de(v)?),
         "opencast" => opencast::run(&de(v)?),
         "playlist" => playlist::run(&de(v)?),
         "pooling" => pooling::run(&de(v)?),
         "portfolio" => portfolio::run(&de(v)?),
+        "refinery" => refinery::run(&de(v)?),
         "subset" => subset::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
         "workforce" => workforce::run(&de(v)?),
@@ -155,11 +159,13 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "fit" => fit::model(&de(v)?, false),
         "food" => food::model(&de(v)?).0,
         "manpower" => manpower::model(&de(v)?).0,
+        "mining" => mining::model(&de(v)?).0,
         "network" => network::model(&de(v)?).0,
         "opencast" => opencast::model(&de(v)?),
         "playlist" => playlist::model(&de(v)?, false).0,
         "pooling" => pooling::model(&de(v)?, true).0,
         "portfolio" => portfolio::model(&de(v)?, None),
+        "refinery" => refinery::model(&de(v)?).0,
         "subset" => subset::model(&de(v)?, 1).0,
         "tsp" => tsp::model(&de(v)?).0,
         "workforce" => workforce::model(&de(v)?).0,

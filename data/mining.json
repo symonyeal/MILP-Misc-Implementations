@@ -1,0 +1,17 @@
+{
+ "case": "mining",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/mining/mining.ipynb",
+ "oracle": [146861974.3642],
+ "data": {
+  "mines": [
+    {"royalty": 5000000.0, "cap": 2000000.0, "quality": 1.0},
+    {"royalty": 4000000.0, "cap": 2500000.0, "quality": 0.7},
+    {"royalty": 4000000.0, "cap": 1300000.0, "quality": 1.5},
+    {"royalty": 5000000.0, "cap": 3000000.0, "quality": 0.5}
+   ],
+  "target": [0.9, 0.8, 1.2, 0.6, 1.0],
+  "rate": 0.1,
+  "max_open": 3,
+  "price": 10
+ }
+}

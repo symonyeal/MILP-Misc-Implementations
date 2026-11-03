@@ -482,6 +482,46 @@ def farm(r):
     return case("farm", nb, data, oracle(r / nb))
 
 
+def mining(r):
+    nb = "mining/mining.ipynb"
+    g = params(r / nb)
+    M = g["mines"]
+    data = {
+        "mines": [{"royalty": g["royalties"][k], "cap": g["capacity"][k], "quality": g["quality"][k]} for k in M],
+        "target": [g["target"][t] for t in g["years"]],
+        "rate": 0.1,
+        "max_open": g["max_mines"],
+        "price": g["price"],
+    }
+    return case("mining", nb, data, oracle(r / nb))
+
+
+def refinery(r):
+    nb = "refinery/refinery.ipynb"
+    g = params(r / nb)
+    keys = [
+        "buy_limit",
+        "lbo_min",
+        "lbo_max",
+        "distill_cap",
+        "reform_cap",
+        "crack_cap",
+        "end_product_profit",
+        "blending_coefficients",
+        "lube_oil_factor",
+        "pmf_rmf_ratio",
+        "octance_number_coefficients",
+        "octance_number_fuel",
+        "vapor_pressure_constants",
+        "reforming_splitting_coefficients",
+    ]
+    data = {k: g[k] for k in keys}
+    data["buy_limit"] = [g["buy_limit"][c] for c in g["crude_numbers"]]
+    data["distillation"] = {k: list(v) for k, v in g["distillation_splitting_coefficients"].items()}
+    data["cracking"] = [[a, b, v] for (a, b), v in g["cracking_splitting_coefficients"].items()]
+    return case("refinery", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -520,6 +560,8 @@ def main():
         "economic_planning": economic(r),
         "manpower_planning": manpower(r),
         "farm_planning": farm(r),
+        "mining": mining(r),
+        "refinery": refinery(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")
