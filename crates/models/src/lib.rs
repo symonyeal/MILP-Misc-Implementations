@@ -17,13 +17,16 @@ pub mod avocado;
 pub mod colour;
 pub mod cover;
 pub mod cutstock;
+pub mod decentral;
 pub mod economic;
 pub mod facility;
 pub mod factory;
 pub mod farm;
 pub mod fit;
 pub mod food;
+pub mod logic;
 pub mod manpower;
+pub mod market;
 pub mod mining;
 pub mod network;
 pub mod opencast;
@@ -123,13 +126,16 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "colour" => colour::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
+        "decentral" => decentral::run(&de(v)?),
         "economic" => economic::run(&de(v)?),
         "facility" => facility::run(&de(v)?),
         "farm" => farm::run(&de(v)?),
         "factory" => factory::run(&de(v)?),
         "fit" => fit::run(&de(v)?),
         "food" => food::run(&de(v)?),
+        "logic" => logic::run(&de(v)?),
         "manpower" => manpower::run(&de(v)?),
+        "market" => market::run(&de(v)?),
         "mining" => mining::run(&de(v)?),
         "network" => network::run(&de(v)?),
         "opencast" => opencast::run(&de(v)?),
@@ -152,13 +158,16 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "colour" => colour::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
+        "decentral" => decentral::model(&de(v)?),
         "economic" => economic::model(&de(v)?),
         "facility" => facility::model(&de(v)?),
         "farm" => farm::model(&de(v)?),
         "factory" => factory::model(&de(v)?).0,
         "fit" => fit::model(&de(v)?, false),
         "food" => food::model(&de(v)?).0,
+        "logic" => logic::model(&de(v)?),
         "manpower" => manpower::model(&de(v)?).0,
+        "market" => market::model(&de(v)?),
         "mining" => mining::model(&de(v)?).0,
         "network" => network::model(&de(v)?).0,
         "opencast" => opencast::model(&de(v)?),

@@ -522,6 +522,53 @@ def refinery(r):
     return case("refinery", nb, data, oracle(r / nb))
 
 
+def logical(r):
+    nb = "logical_design/logical_design.ipynb"
+    g = params(r / nb)
+    rows = ["1", "2", "3", "4"]
+    data = {
+        "gates": len(g["gates"]),
+        "a": [g["valueA"]["1", k] for k in rows],
+        "b": [g["valueB"]["1", k] for k in rows],
+        # Gate 1's output is fixed by the notebook's bounds: 0, 1, 1, 0 (exclusive or).
+        "out": [0, 1, 1, 0],
+    }
+    return case("logic", nb, data, oracle(r / nb))
+
+
+def market(r):
+    nb = "market_sharing/market_sharing.ipynb"
+    g = params(r / nb)
+    R = list(g["retailers"])
+    goal = [
+        ("delivery points", {k: g["deliveryPoints"][k] for k in R}, "deliveryPoints40", "deliveryPoints5"),
+        ("spirit market", {k: g["spiritMarket"][k] for k in R}, "spiritMarket40", "spiritMarket5"),
+        ("oil market 1", g["oilMarket1"], "oilMarket1_40", "oilMarket1_5"),
+        ("oil market 2", g["oilMarket2"], "oilMarket2_40", "oilMarket2_5"),
+        ("oil market 3", g["oilMarket3"], "oilMarket3_40", "oilMarket3_5"),
+        ("group A", g["retailerA"], "retailerA40", "retailerA5"),
+        ("group B", g["retailerB"], "retailerB40", "retailerB5"),
+    ]
+    data = {
+        "retailers": len(R),
+        "goals": [{"name": n, "w": [[k, v] for k, v in w.items()], "target": g[t], "tol": g[s]} for n, w, t, s in goal],
+    }
+    return case("market", nb, data, oracle(r / nb))
+
+
+def decentral(r):
+    nb = "decentralization_planning/decentralization_planning.ipynb"
+    g = params(r / nb)
+    data = {
+        "departments": g["Deparments"],
+        "cities": g["Cities"],
+        "benefit": [[d, c, v] for (d, c), v in g["benefit"].items()],
+        "comm": [[d, c, e, f, v] for (d, c, e, f), v in g["communicationCost"].items()],
+        "max_per_city": 3,
+    }
+    return case("decentral", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -562,6 +609,9 @@ def main():
         "farm_planning": farm(r),
         "mining": mining(r),
         "refinery": refinery(r),
+        "logical_design": logical(r),
+        "market_sharing": market(r),
+        "decentralization": decentral(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")
