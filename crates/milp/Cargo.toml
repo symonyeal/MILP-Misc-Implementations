@@ -1,6 +1,6 @@
 [package]
 name = "milp"
-description = "A sparse LP/MILP model and its solve by HiGHS 1.12.0, built from source"
+description = "A sparse mixed-integer quadratically constrained program, solved by HiGHS 1.12.0 (linear) or SCIP 10 (quadratic)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +8,10 @@ publish.workspace = true
 license.workspace = true
 links = "highs"
 exclude = ["HiGHS/check", "HiGHS/docs", "HiGHS/examples"]
+
+[dependencies]
+russcip.workspace = true
+scip-sys.workspace = true
 
 [build-dependencies]
 cmake.workspace = true

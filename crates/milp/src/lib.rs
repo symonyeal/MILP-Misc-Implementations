@@ -1,18 +1,32 @@
-//! A sparse mixed-integer linear program and its solve by HiGHS 1.12.0.
+//! A sparse mixed-integer quadratically constrained program and its solve.
 //!
-//!   optimise  c0 + c'x   subject to  lo <= A x <= hi,  l <= x <= u,  x_j integer for j in J.
+//!   optimise  c0 + c'x + x'Q₀x   subject to  lo_i <= a_i'x + x'Q_i x <= hi_i,  l <= x <= u,
+//!             x_j integer for j in J.
+//!
+//! Linear models go to HiGHS 1.12.0; models with any quadratic term go to SCIP 10, which solves
+//! nonconvex ones to global optimality by spatial branch and bound. Either solver runs a linear
+//! model (`solve_on`), so each can check the other.
 //!
 //! Legend
 //!   x ....... columns, x_j indexed 0..n          A ....... rows by CSR: p (row starts), j, a
 //!   c, c0 ... objective and constant             lo, hi .. row bounds (±INF when open)
 //!   l, u .... column bounds                      int ..... true on the integer columns J
-//!   y ....... row duals of an LP, HiGHS sign: c - A'y is the reduced cost
+//!   qc ...... Q₀ as terms (j, k, v): v x_j x_k   qa ...... Q_i as terms (i, j, k, v)
+//!   y ....... row duals of an LP solved by HiGHS, HiGHS sign: c - A'y is the reduced cost
 
 mod highs;
+mod scip;
 
 pub use highs::version;
 
 pub const INF: f64 = f64::INFINITY;
+
+/// The solver a model is sent to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Backend {
+    Highs,
+    Scip,
+}
 
 /// How a solve ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -22,11 +36,12 @@ pub enum Status {
     Unbounded,
     /// A time, iteration or solution limit stopped the search; `x` holds the incumbent, if any.
     Limit,
-    /// Any other HiGHS model status (load, presolve or solve error, interrupt).
+    /// Any other outcome (load, presolve or solve error, interrupt): the HiGHS model status, or
+    /// -1 from SCIP.
     Error(i32),
 }
 
-/// One solve: status, objective c0 + c'x, the best bound, x, and y (LP only, else empty).
+/// One solve: status, objective, the best bound, x, and y (HiGHS LP only, else empty).
 #[derive(Clone, Debug)]
 pub struct Sol {
     pub st: Status,
@@ -49,6 +64,8 @@ pub struct Model {
     pub p: Vec<i32>,
     pub j: Vec<i32>,
     pub a: Vec<f64>,
+    pub qc: Vec<(usize, usize, f64)>,
+    pub qa: Vec<(usize, usize, usize, f64)>,
 }
 
 impl Model {
@@ -127,16 +144,53 @@ impl Model {
         self.row(b, t, b)
     }
 
-    /// The columns of row i.
+    /// A row lo <= a'x + Σ v x_j x_k <= hi, quadratic terms q = (j, k, v). OUTPUT i.
+    pub fn qrow(
+        &mut self,
+        lo: f64,
+        t: impl IntoIterator<Item = (usize, f64)>,
+        q: impl IntoIterator<Item = (usize, usize, f64)>,
+        hi: f64,
+    ) -> usize {
+        let i = self.row(lo, t, hi);
+        for (j, k, v) in q {
+            assert!(j.max(k) < self.n(), "quadratic term on column {} of {}", j.max(k), self.n());
+            self.qa.push((i, j, k, v));
+        }
+        i
+    }
+
+    /// Adds v x_j x_k to the objective.
+    pub fn qobj(&mut self, j: usize, k: usize, v: f64) {
+        assert!(j.max(k) < self.n(), "quadratic term on column {} of {}", j.max(k), self.n());
+        self.qc.push((j, k, v));
+    }
+
+    /// True when the model has no quadratic term.
+    pub fn linear(&self) -> bool {
+        self.qc.is_empty() && self.qa.is_empty()
+    }
+
+    /// The linear columns of row i.
     pub fn cols(&self, i: usize) -> impl Iterator<Item = usize> + '_ {
         self.j[self.p[i] as usize..self.p[i + 1] as usize].iter().map(|&j| j as usize)
     }
 
-    /// A x.
+    /// Row values a_i'x + x'Q_i x.
     pub fn ax(&self, x: &[f64]) -> Vec<f64> {
-        (0..self.m())
+        let mut r: Vec<f64> = (0..self.m())
             .map(|i| (self.p[i] as usize..self.p[i + 1] as usize).map(|k| self.a[k] * x[self.j[k] as usize]).sum())
-            .collect()
+            .collect();
+        for &(i, j, k, v) in &self.qa {
+            r[i] += v * x[j] * x[k];
+        }
+        r
+    }
+
+    /// The objective c0 + c'x + x'Q₀x.
+    pub fn obj(&self, x: &[f64]) -> f64 {
+        let l: f64 = self.c.iter().zip(x).map(|(c, x)| c * x).sum();
+        self.c0 + l + self.qc.iter().map(|&(j, k, v)| v * x[j] * x[k]).sum::<f64>()
     }
 
     /// The largest violation by x of a bound, a row or integrality: the replay every solution passes.
@@ -150,50 +204,29 @@ impl Model {
         col.chain(row).fold(0.0, |a, b| if b > a { b } else { a })
     }
 
-    /// Solve with HiGHS defaults.
+    /// Solve on HiGHS when the model is linear, else on SCIP.
     pub fn solve(&self) -> Sol {
-        self.solve_with(&[])
+        self.solve_on(if self.linear() { Backend::Highs } else { Backend::Scip })
     }
 
-    /// Solve with HiGHS double options set by name, e.g. ("time_limit", 60.0).
-    pub fn solve_with(&self, opts: &[(&str, f64)]) -> Sol {
-        let (n, m) = (self.n(), self.m());
-        let h = highs::H::new();
-        for &(k, v) in opts {
-            h.real(k, v);
-        }
-        let integ: Vec<i32> = self.int.iter().map(|&b| b as i32).collect();
-        let mip = self.int.iter().any(|&b| b);
-        let sense = if self.max { -1 } else { 1 };
-        let mut s = Sol { st: Status::Error(2), obj: f64::NAN, bound: f64::NAN, x: vec![], y: vec![] };
-        if !h.pass(sense, self.c0, &self.c, &self.l, &self.u, &self.lo, &self.hi, &self.p, &self.j, &self.a, &integ) {
-            return s;
-        }
-        let ms = h.run();
-        s.st = match ms {
-            7 => Status::Optimal,
-            8 => Status::Infeasible,
-            9 | 10 => Status::Unbounded,
-            13 | 14 | 16 => Status::Limit,
-            _ => Status::Error(ms),
-        };
-        if matches!(s.st, Status::Optimal | Status::Limit) {
-            let (x, y) = h.solution(n, m);
-            s.obj = h.info("objective_function_value");
-            s.bound = if mip { h.info("mip_dual_bound") } else { s.obj };
-            s.x = x;
-            if !mip {
-                s.y = y;
+    /// Solve on the named backend; HiGHS refuses quadratic terms (programmer error).
+    pub fn solve_on(&self, b: Backend) -> Sol {
+        match b {
+            Backend::Highs => {
+                assert!(self.linear(), "HiGHS here solves linear models only");
+                highs::solve(self)
             }
+            Backend::Scip => scip::solve(self),
         }
-        s
     }
 
-    /// Hierarchical objectives in the sense of Gurobi's `setObjectiveN`: objectives (c_k, reltol_k)
-    /// in priority order, each optimised over the solutions that degrade no earlier objective by more
-    /// than max(reltol_k |z_k|, 1e-6) (Gurobi's MIP rule, ObjNAbsTol at its default 1e-6).
-    /// OUTPUT the solution of each stage; the sequence stops at the first non-optimal stage.
+    /// Hierarchical objectives in the sense of Gurobi's `setObjectiveN`: linear objectives
+    /// (c_k, reltol_k) in priority order, each optimised over the solutions that degrade no earlier
+    /// objective by more than max(reltol_k |z_k|, 1e-6) (Gurobi's MIP rule, ObjNAbsTol at its
+    /// default 1e-6). OUTPUT the solution of each stage; the sequence stops at the first
+    /// non-optimal stage.
     pub fn lex(&self, objs: &[(&[f64], f64)]) -> Vec<Sol> {
+        assert!(self.qc.is_empty(), "lex takes linear objectives");
         let mut m = self.clone();
         let mut out = Vec::new();
         for &(c, tol) in objs {
@@ -265,6 +298,43 @@ mod tests {
         let (x, y) = (m.var(0.0, 1.0, 0.0), m.var(0.0, 1.0, 0.0));
         m.le([(y, 1.0), (x, 2.0), (y, -1.0), (x, 1.0)], 1.0);
         assert_eq!((m.j.clone(), m.a.clone(), m.p.clone()), (vec![0], vec![3.0], vec![0, 1]));
+    }
+
+    #[test]
+    fn scip_global_optima() {
+        // max xy, x + y <= 4, 0 <= x, y <= 4: a nonconvex objective, optimum 4 at (2, 2).
+        let mut m = Model::new(true);
+        let (x, y) = (m.var(0.0, 4.0, 0.0), m.var(0.0, 4.0, 0.0));
+        m.le([(x, 1.0), (y, 1.0)], 4.0);
+        m.qobj(x, y, 1.0);
+        let s = m.solve();
+        assert_eq!(s.st, Status::Optimal);
+        assert!((s.obj - 4.0).abs() < 1e-6 && (s.x[x] - 2.0).abs() < 1e-4);
+        // min x, x² >= 4, -1 <= x <= 3: a nonconvex feasible set [2, 3], optimum 2.
+        let mut m = Model::new(false);
+        let x = m.var(-1.0, 3.0, 1.0);
+        m.qrow(4.0, [], [(x, x, 1.0)], INF);
+        let s = m.solve();
+        assert!((s.obj - 2.0).abs() < 1e-6 && m.viol(&s.x) < 1e-6);
+        // min (x − 2.6)², x integer: x = 3, value 0.16.
+        let mut m = Model::new(false);
+        let x = m.int(-10.0, 10.0, -5.2);
+        m.c0 = 6.76;
+        m.qobj(x, x, 1.0);
+        let s = m.solve();
+        assert_eq!(s.x[x], 3.0);
+        assert!((s.obj - 0.16).abs() < 1e-9 && (m.obj(&s.x) - s.obj).abs() < 1e-12);
+    }
+
+    #[test]
+    fn backends_agree_on_a_mip() {
+        let mut m = Model::new(true);
+        let (a, b) = (m.int(0.0, INF, 5.0), m.int(0.0, INF, 4.0));
+        m.le([(a, 6.0), (b, 4.0)], 24.0);
+        m.le([(a, 1.0), (b, 2.0)], 6.0);
+        let (h, s) = (m.solve_on(Backend::Highs), m.solve_on(Backend::Scip));
+        assert_eq!((h.st, s.st), (Status::Optimal, Status::Optimal));
+        assert!((h.obj - s.obj).abs() < 1e-9 && s.obj == 20.0);
     }
 
     #[test]

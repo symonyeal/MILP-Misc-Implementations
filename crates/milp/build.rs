@@ -36,4 +36,26 @@ fn main() {
     }
     println!("cargo:rerun-if-changed=HiGHS/Version.txt");
     println!("cargo:rerun-if-changed=build.rs");
+    if t.contains("windows") {
+        copy_scip_dlls();
+    }
+}
+
+/// Windows has no rpath: put the DLLs of scip-sys's prebuilt SCIP beside the binaries in the
+/// profile directory (target/<profile>), where the loader looks first. `cargo test` and `cargo
+/// run` also find them through the link-search path, but a binary started directly needs this.
+fn copy_scip_dlls() {
+    let lib = env::var("DEP_SCIP_LIBDIR").expect("scip-sys did not report its library directory");
+    let bin = Path::new(&lib).join("../bin");
+    let out = env::var("OUT_DIR").unwrap();
+    let prof = Path::new(&out).ancestors().nth(3).unwrap();
+    for e in std::fs::read_dir(&bin).unwrap_or_else(|e| panic!("{}: {e}", bin.display())) {
+        let p = e.unwrap().path();
+        if p.extension().is_some_and(|x| x.eq_ignore_ascii_case("dll")) {
+            let to = prof.join(p.file_name().unwrap());
+            if !to.exists() {
+                std::fs::copy(&p, &to).unwrap();
+            }
+        }
+    }
 }

@@ -32,7 +32,6 @@ unsafe extern "C" {
         integ: *const Hi,
     ) -> Hi;
     fn Highs_setBoolOptionValue(h: *mut c_void, k: *const c_char, v: Hi) -> Hi;
-    fn Highs_setDoubleOptionValue(h: *mut c_void, k: *const c_char, v: f64) -> Hi;
     fn Highs_run(h: *mut c_void) -> Hi;
     fn Highs_getModelStatus(h: *const c_void) -> Hi;
     fn Highs_getSolution(h: *const c_void, x: *mut f64, z: *mut f64, r: *mut f64, y: *mut f64) -> Hi;
@@ -71,12 +70,6 @@ impl H {
         let k = CString::new(k).unwrap();
         // SAFETY: live handle, NUL-terminated key.
         unsafe { Highs_setBoolOptionValue(self.0, k.as_ptr(), v as Hi) };
-    }
-
-    pub fn real(&self, k: &str, v: f64) {
-        let k = CString::new(k).unwrap();
-        // SAFETY: live handle, NUL-terminated key.
-        unsafe { Highs_setDoubleOptionValue(self.0, k.as_ptr(), v) };
     }
 
     /// Highs_passModel; every slice must have the length its argument count states.
@@ -148,4 +141,35 @@ impl H {
         unsafe { Highs_getDoubleInfoValue(self.0, k.as_ptr(), &mut v) };
         v
     }
+}
+
+/// A linear `Model` solved by HiGHS with its defaults.
+pub fn solve(m: &crate::Model) -> crate::Sol {
+    use crate::{Sol, Status};
+    let h = H::new();
+    let integ: Vec<i32> = m.int.iter().map(|&b| b as i32).collect();
+    let mip = m.int.iter().any(|&b| b);
+    let sense = if m.max { -1 } else { 1 };
+    let mut s = Sol { st: Status::Error(2), obj: f64::NAN, bound: f64::NAN, x: vec![], y: vec![] };
+    if !h.pass(sense, m.c0, &m.c, &m.l, &m.u, &m.lo, &m.hi, &m.p, &m.j, &m.a, &integ) {
+        return s;
+    }
+    let ms = h.run();
+    s.st = match ms {
+        7 => Status::Optimal,
+        8 => Status::Infeasible,
+        9 | 10 => Status::Unbounded,
+        13 | 14 | 16 => Status::Limit,
+        _ => Status::Error(ms),
+    };
+    if matches!(s.st, Status::Optimal | Status::Limit) {
+        let (x, y) = h.solution(m.n(), m.m());
+        s.obj = h.info("objective_function_value");
+        s.bound = if mip { h.info("mip_dual_bound") } else { s.obj };
+        s.x = x;
+        if !mip {
+            s.y = y;
+        }
+    }
+    s
 }
