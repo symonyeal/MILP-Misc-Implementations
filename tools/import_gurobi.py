@@ -569,6 +569,60 @@ def decentral(r):
     return case("decentral", nb, data, oracle(r / nb))
 
 
+def dea(r):
+    """The garage data are a literal inside the notebook's solve_DEA function; the oracle is the
+    printed efficiency of each garage, rounded to 3 decimals, as the interval it rounds from."""
+    import ast
+    import re
+
+    nb = "efficiency_analysis/efficiency_analysis.ipynb"
+    cells = json.loads((r / nb).read_text(encoding="utf-8"))["cells"]
+    src = next("".join(c["source"]) for c in cells if "def solve_DEA" in "".join(c["source"]))
+    call = next(
+        n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "multidict"
+    )
+    units = ast.literal_eval(call.args[0])
+    ins = ["staff", "showRoom", "Population1", "Population2", "alphaEnquiries", "betaEnquiries"]
+    outs = ["alphaSales", "BetaSales", "profit"]
+    text = "".join("".join(o.get("text", "")) for c in cells for o in c.get("outputs", []))
+    score = {m[1]: float(m[2]) for m in re.finditer(r"performance value of DMU (\w+) is: ([0-9.]+)", text)}
+    data = {
+        "inputs": ins,
+        "outputs": outs,
+        "units": [{"name": k, "x": [v[0][i] for i in ins], "y": [v[1][o] for o in outs]} for k, v in units.items()],
+    }
+    orc = [[round(score[k] - 5e-4, 4), round(score[k] + 5e-4, 4)] for k in units]
+    return case("dea", nb, data, orc, "oracle: the notebook's printed efficiencies (3 decimals) as rounding intervals")
+
+
+def constraint_opt(r):
+    nb = "constraint_optimization/constraint_optimization.ipynb"
+    src = "".join(
+        "".join(c["source"])
+        for c in json.loads((r / nb).read_text(encoding="utf-8"))["cells"]
+        if c["cell_type"] == "code"
+    )
+    import re
+
+    def rows(kind):
+        # Each row reads Σ b_i (i in the list) <= b0 or >= b0 + 1; the regex also catches the b0.
+        found = re.finditer(kind + r"\w* = model\.addConstr\( (.*?) ,", src)
+        return [[int(i) for i in re.findall(r"b\[(\d)\]", m[1])][:-1] for m in found]
+
+    data = {"n": 9, "le": rows("C"), "ge": rows("R"), "obj": [[0, 1], [3, -1], [5, -1]]}
+    return case("constraint", nb, data, oracle(r / nb))
+
+
+def wind(r):
+    nb = "offshore_wind_farming/offshore_wind_farming.ipynb"
+    g = params(r / nb)
+    data = {
+        "supply": [g["vertices"][v] for v in sorted(g["vertices"])],
+        "edges": [[a, b, g["cap"][a, b], g["flow_cost"][a, b], g["fixed_cost"][a, b]] for a, b in g["edges"]],
+    }
+    return case("wind", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -612,6 +666,9 @@ def main():
         "logical_design": logical(r),
         "market_sharing": market(r),
         "decentralization": decentral(r),
+        "efficiency_analysis": dea(r),
+        "constraint_optimization": constraint_opt(r),
+        "offshore_wind": wind(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")

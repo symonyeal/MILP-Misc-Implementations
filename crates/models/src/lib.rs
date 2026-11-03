@@ -15,8 +15,10 @@ use serde_json::Value;
 pub mod agriprice;
 pub mod avocado;
 pub mod colour;
+pub mod constraint;
 pub mod cover;
 pub mod cutstock;
+pub mod dea;
 pub mod decentral;
 pub mod economic;
 pub mod facility;
@@ -36,6 +38,7 @@ pub mod portfolio;
 pub mod refinery;
 pub mod subset;
 pub mod tsp;
+pub mod wind;
 pub mod workforce;
 
 /// What a case returns: the final solve's status, the objective of each solve the oracle covers,
@@ -124,8 +127,10 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "agriprice" => agriprice::run(&de(v)?),
         "avocado" => avocado::run(&de(v)?),
         "colour" => colour::run(&de(v)?),
+        "constraint" => constraint::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
+        "dea" => dea::run(&de(v)?),
         "decentral" => decentral::run(&de(v)?),
         "economic" => economic::run(&de(v)?),
         "facility" => facility::run(&de(v)?),
@@ -145,6 +150,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "refinery" => refinery::run(&de(v)?),
         "subset" => subset::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
+        "wind" => wind::run(&de(v)?),
         "workforce" => workforce::run(&de(v)?),
         _ => return Err(format!("unknown case {case}")),
     })
@@ -156,8 +162,10 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "agriprice" => agriprice::model(&de(v)?),
         "avocado" => avocado::model(&de(v)?),
         "colour" => colour::model(&de(v)?),
+        "constraint" => constraint::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
+        "dea" => dea::model(&de(v)?, 0),
         "decentral" => decentral::model(&de(v)?),
         "economic" => economic::model(&de(v)?),
         "facility" => facility::model(&de(v)?),
@@ -177,6 +185,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "refinery" => refinery::model(&de(v)?).0,
         "subset" => subset::model(&de(v)?, 1).0,
         "tsp" => tsp::model(&de(v)?).0,
+        "wind" => wind::model(&de(v)?),
         "workforce" => workforce::model(&de(v)?).0,
         _ => return Err(format!("unknown case {case}")),
     })

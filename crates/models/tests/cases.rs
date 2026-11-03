@@ -14,7 +14,7 @@ fn every_case_passes() {
         .filter(|p| p.extension().is_some_and(|x| x == "json"))
         .collect();
     paths.sort();
-    assert_eq!(paths.len(), 28);
+    assert_eq!(paths.len(), 31);
     let fail: Vec<String> = paths
         .iter()
         .filter_map(|p| {
