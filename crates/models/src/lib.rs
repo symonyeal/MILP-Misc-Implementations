@@ -18,6 +18,7 @@ pub mod colour;
 pub mod comparison;
 pub mod constraint;
 pub mod cover;
+pub mod covid;
 pub mod cutstock;
 pub mod dea;
 pub mod decentral;
@@ -38,6 +39,7 @@ pub mod playlist;
 pub mod pooling;
 pub mod portfolio;
 pub mod power;
+pub mod rap;
 pub mod refinery;
 pub mod subset;
 pub mod tsp;
@@ -133,6 +135,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "comparison" => comparison::run(&de(v)?),
         "constraint" => constraint::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
+        "covid" => covid::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
         "dea" => dea::run(&de(v)?),
         "decentral" => decentral::run(&de(v)?),
@@ -153,6 +156,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "pooling" => pooling::run(&de(v)?),
         "portfolio" => portfolio::run(&de(v)?),
         "power" => power::run(&de(v)?),
+        "rap" => rap::run(&de(v)?),
         "refinery" => refinery::run(&de(v)?),
         "subset" => subset::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
@@ -171,6 +175,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "comparison" => comparison::model(&de(v)?),
         "constraint" => constraint::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
+        "covid" => covid::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
         "dea" => dea::model(&de(v)?, 0),
         "decentral" => decentral::model(&de(v)?),
@@ -191,6 +196,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "pooling" => pooling::model(&de(v)?, true).0,
         "portfolio" => portfolio::model(&de(v)?, None),
         "power" => power::model(&de(v)?).0,
+        "rap" => rap::model(&de(v)?),
         "refinery" => refinery::model(&de(v)?).0,
         "subset" => subset::model(&de(v)?, 1).0,
         "tsp" => tsp::model(&de(v)?).0,

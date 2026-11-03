@@ -48,18 +48,59 @@ def params(nb):
     return g
 
 
+class Captured(Exception):
+    """Raised by the stub gp.Model: carries the locals of the function that would build a model."""
+
+
+def model_locals(nb):
+    """Run every code cell with a gp.Model that raises Captured(caller's locals): the data each
+    model-building function had gathered, one dict per call, in run order. A cell stops at its
+    first such call, as if the solve had been skipped."""
+    import copy
+
+    def raise_locals(*_a, **_k):
+        # Deep copies: later cells may change the same objects in place (covid19 edits its demand).
+        loc = sys._getframe(1).f_locals
+        raise Captured(
+            {k: copy.deepcopy(v) for k, v in loc.items() if not callable(v) and not isinstance(v, types.ModuleType)}
+        )
+
+    gp = sys.modules["gurobipy"]
+    gp.Model = raise_locals  # type: ignore[attr-defined]
+    g, out, here, failed = {}, [], os.getcwd(), []
+    os.chdir(nb.parent)
+    try:
+        for c in json.loads(nb.read_text(encoding="utf-8"))["cells"]:
+            s = "".join(c["source"])
+            if c["cell_type"] != "code" or s.lstrip().startswith("%"):
+                continue
+            try:
+                exec(s, g)  # noqa: S102 -- the notebook's own cells are the data source
+            except Captured as e:
+                out.append(e.args[0])
+            except Exception as e:  # noqa: BLE001 -- cells that read solved models fail without one
+                failed.append(type(e).__name__)
+    finally:
+        os.chdir(here)
+        del gp.Model  # type: ignore[attr-defined]
+    return out
+
+
 def oracle(nb):
     """Recorded Gurobi objectives in log order: a number for an "Optimal objective" line, the pair
     [incumbent, best bound] for a "Best objective a, best bound b" line (equal when proven)."""
+    import re
+
+    num = r"([-+]?[0-9.]+(?:e[-+]?[0-9]+)?)"
+    opt, best = re.compile(rf"^Optimal objective\s+{num}$"), re.compile(rf"^Best objective {num}, best bound {num}")
     out = []
     for c in json.loads(nb.read_text(encoding="utf-8"))["cells"]:
         for o in c.get("outputs", []):
             for ln in "".join(o.get("text", "")).splitlines():
-                w = ln.replace(",", " ").split()
-                if ln.startswith("Optimal objective"):
-                    out.append(float(w[2]))
-                elif ln.startswith("Best objective"):
-                    a, b = float(w[2]), float(w[5])
+                if m := opt.match(ln.strip()):
+                    out.append(float(m[1]))
+                elif m := best.match(ln.strip()):
+                    a, b = float(m[1]), float(m[2])
                     out.append(a if a == b else [a, b])
     return out
 
@@ -662,6 +703,38 @@ def power(r, k):
     return case("power", nb, data, oracle(r / nb))
 
 
+def rap(r):
+    nb = "milp_tutorial/milp_tutorial_RAP_problem_003.ipynb"
+    g = params(r / nb)
+    data = {
+        "resources": g["R"],
+        "jobs": g["J"],
+        "pairs": [[a, b, g["ms"][a, b], g["C"][a, b]] for a, b in g["combinations"]],
+        "budget": g["B"],
+        "gap_penalty": 101,
+    }
+    note = "the notebook's second, randomly generated instance draws scores over a Python set of names, so it is not reproducible"
+    return case("rap", nb, data, oracle(r / nb)[:1], note)
+
+
+def covid(r):
+    nb = "covid19_facility_location/covid19_facility_location.ipynb"
+    runs = model_locals(r / nb)
+    data = []
+    for g in runs:
+        data.append(
+            {
+                "counties": [{"at": list(g["c_coordinates"][c]), "demand": g["demand"][c]} for c in g["counties"]],
+                "existing": [{"at": list(g["e_coordinates"][e]), "cap": g["e_capacity"][e]} for e in g["existing"]],
+                "temporary": [{"at": list(g["t_coordinates"][t]), "cap": g["t_capacity"][t]} for t in g["temporary"]],
+                "rate": g["dcost"],
+                "fixed": g["tfcost"],
+                "extra": g.get("bigM", 1e9),
+            }
+        )
+    return [case("covid", nb, d, [o]) for d, o in zip(data, oracle(r / nb))]
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -712,7 +785,10 @@ def main():
         "protein_comparison": comparison(r),
         "electrical_power_1": power(r, 1),
         "electrical_power_2": power(r, 2),
+        "resource_assignment": rap(r),
     }
+    for k, d in enumerate(covid(r), 1):
+        cases[f"covid19_facility_{k}"] = d
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")
         print(k, d["oracle"])

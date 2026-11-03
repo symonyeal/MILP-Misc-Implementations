@@ -1,0 +1,23 @@
+{
+ "case": "rap",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/milp_tutorial/milp_tutorial_RAP_problem_003.ipynb",
+ "oracle": [52.0],
+ "note": "the notebook's second, randomly generated instance draws scores over a Python set of names, so it is not reproducible",
+ "data": {
+  "resources": ["Carlos", "Joe", "Monika"],
+  "jobs": ["Tester", "JavaDeveloper", "Architect"],
+  "pairs": [
+    ["Carlos", "Tester", 53, 1],
+    ["Carlos", "JavaDeveloper", 27, 1],
+    ["Carlos", "Architect", 13, 1],
+    ["Joe", "Tester", 80, 2],
+    ["Joe", "JavaDeveloper", 47, 2],
+    ["Joe", "Architect", 67, 2],
+    ["Monika", "Tester", 53, 3],
+    ["Monika", "JavaDeveloper", 73, 3],
+    ["Monika", "Architect", 47, 3]
+   ],
+  "budget": 5,
+  "gap_penalty": 101
+ }
+}
