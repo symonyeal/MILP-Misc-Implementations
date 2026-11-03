@@ -636,6 +636,32 @@ def comparison(r):
     return case("comparison", nb, data, oracle(r / nb))
 
 
+def power(r, k):
+    nb = f"electrical_power_generation/electrical_power_{k}.ipynb"
+    g = params(r / nb)
+    keys = [
+        "maxstart0",
+        "generators",
+        "period_hours",
+        "demand",
+        "min_load",
+        "max_load",
+        "base_cost",
+        "per_mw_cost",
+        "startup_cost",
+    ]
+    data = {key: g[key] for key in keys}
+    if "hydro_load" in g:
+        data["hydro"] = {
+            "load": g["hydro_load"],
+            "cost": g["hydro_cost"],
+            "drop": g["hydro_height_reduction"],
+            "start": g["hydro_startup_cost"],
+            "pump": 3000,
+        }
+    return case("power", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -684,6 +710,8 @@ def main():
         "offshore_wind": wind(r),
         "protein_folding": folding(r),
         "protein_comparison": comparison(r),
+        "electrical_power_1": power(r, 1),
+        "electrical_power_2": power(r, 2),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")

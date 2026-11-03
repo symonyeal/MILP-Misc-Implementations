@@ -37,6 +37,7 @@ pub mod opencast;
 pub mod playlist;
 pub mod pooling;
 pub mod portfolio;
+pub mod power;
 pub mod refinery;
 pub mod subset;
 pub mod tsp;
@@ -151,6 +152,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "playlist" => playlist::run(&de(v)?),
         "pooling" => pooling::run(&de(v)?),
         "portfolio" => portfolio::run(&de(v)?),
+        "power" => power::run(&de(v)?),
         "refinery" => refinery::run(&de(v)?),
         "subset" => subset::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
@@ -188,6 +190,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "playlist" => playlist::model(&de(v)?, false).0,
         "pooling" => pooling::model(&de(v)?, true).0,
         "portfolio" => portfolio::model(&de(v)?, None),
+        "power" => power::model(&de(v)?).0,
         "refinery" => refinery::model(&de(v)?).0,
         "subset" => subset::model(&de(v)?, 1).0,
         "tsp" => tsp::model(&de(v)?).0,

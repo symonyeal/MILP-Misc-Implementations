@@ -1,0 +1,16 @@
+{
+ "case": "power",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/electrical_power_generation/electrical_power_1.ipynb",
+ "oracle": [1002540.0],
+ "data": {
+  "maxstart0": 5,
+  "generators": [12, 10, 5],
+  "period_hours": [6, 3, 6, 3, 6],
+  "demand": [15000, 30000, 25000, 40000, 27000],
+  "min_load": [850, 1250, 1500],
+  "max_load": [2000, 1750, 4000],
+  "base_cost": [1000, 2600, 3000],
+  "per_mw_cost": [2, 1.3, 3],
+  "startup_cost": [2000, 1000, 500]
+ }
+}

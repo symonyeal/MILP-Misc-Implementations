@@ -36,6 +36,7 @@ unsafe extern "C" {
     fn Highs_getModelStatus(h: *const c_void) -> Hi;
     fn Highs_getSolution(h: *const c_void, x: *mut f64, z: *mut f64, r: *mut f64, y: *mut f64) -> Hi;
     fn Highs_getDoubleInfoValue(h: *const c_void, k: *const c_char, v: *mut f64) -> Hi;
+    fn Highs_setDoubleOptionValue(h: *mut c_void, k: *const c_char, v: f64) -> Hi;
 }
 
 /// `kHighsMatrixFormatRowwise`.
@@ -64,6 +65,11 @@ impl H {
         assert!(!h.0.is_null(), "HiGHS allocation failed");
         // MILP_LOG set: show the solver log (diagnosis only).
         h.flag("output_flag", std::env::var_os("MILP_LOG").is_some());
+        // Relative MIP gap 1e-9, not HiGHS's 1e-4: "optimal" means optimal, not within 0.01%
+        // (SCIP's default gap is already 0).
+        let k = CString::new("mip_rel_gap").unwrap();
+        // SAFETY: live handle, NUL-terminated key.
+        unsafe { Highs_setDoubleOptionValue(h.0, k.as_ptr(), 1e-9) };
         h
     }
 
