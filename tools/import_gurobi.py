@@ -971,6 +971,233 @@ def aviation(r):
     return case("aviation", nb, data, oracle(r / nb), note, fixed=True)
 
 
+def railway(r, ds):
+    """The notebook's data step without pandas: each train's route from its start resource on."""
+    nb = "railway_dispatching/railway_dispatching.ipynb"
+
+    def rows(f):
+        with open(r / "railway_dispatching/data" / ds / f, encoding="utf-8-sig", newline="") as h:
+            return list(csv.DictReader(h))
+
+    res = sorted(rows("stations.csv") + rows("tracks.csv"), key=lambda x: int(x["id"]))
+    routes = {x["id"]: [int(v) for v in x["resources"].split("-")] for x in rows("routes.csv")}
+    trains = []
+    for x in rows("trains.csv"):
+        q = routes[x["route"]]
+        trains.append({"id": x["id"], "route": q[q.index(int(x["start"])) :]})
+    data = {
+        "resources": [
+            {"id": int(x["id"]), "duration": float(x["duration"]), "capacity": int(x["capacity"])} for x in res
+        ],
+        "trains": trains,
+    }
+    # The notebook solves `linear` only.
+    note = "the notebook's big-M sums resource ids, not durations; the port uses durations, and neither binds"
+    return case("railway", nb, data, oracle(r / nb) if ds == "linear" else [], note)
+
+
+def burrito(r, day):
+    """The notebook's data step without pandas: pairs with scaled demand > 0, as it keeps."""
+    nb = "burrito_optimization_game/burrito_optimization_game.ipynb"
+
+    def rows(f):
+        with open(r / f"burrito_optimization_game/data/round1-day{day}_{f}.csv", encoding="utf-8-sig", newline="") as h:
+            return list(csv.DictReader(h))
+
+    p = rows("problem_data")[0]
+    pairs = [
+        [x["demand_node_index"], x["truck_node_index"], float(x["scaled_demand"])] for x in rows("demand_truck_data")
+    ]
+    data = {
+        "price": float(p["burrito_price"]),
+        "ingredient": float(p["ingredient_cost"]),
+        "truck": float(p["truck_cost"]),
+        "spots": [x["index"] for x in rows("truck_node_data")],
+        "buildings": [x["index"] for x in rows("demand_node_data")],
+        "pairs": [q for q in pairs if q[2] > 0],
+    }
+    return case("trucks", nb, data, oracle(r / nb) if day == 1 else [])
+
+
+def lineup(r):
+    nb = "fantasy_basketball/fantasy_basketball_part2.ipynb"
+    with open(r / "fantasy_basketball/results_target_advanced.csv", encoding="utf-8-sig", newline="") as h:
+        rows = list(csv.DictReader(h))
+    players = [
+        {
+            "name": x["Player"],
+            "salary": float(x["Salary"]),
+            "points": float(x["PredictedFantasyPoints"]),
+            "pos": [x["MainPosition"]] + ([x["AlternativePosition"]] if x["AlternativePosition"] else []),
+        }
+        for x in rows
+    ]
+    return case("lineup", nb, {"players": players, "cap": 50000, "size": 8}, oracle(r / nb))
+
+
+def luggage(r):
+    """The notebook's seeded random points; it saves no output, so there is no oracle."""
+    nb = "lost_luggage_distribution/lost_luggage_distribution.ipynb"
+    g = params(r / nb)
+    return case("luggage", nb, {"points": g["points"], "vans": g["K"], "limit": 120}, [])
+
+
+def milk(r):
+    """The notebook saves no output; the oracle is the exhaustive split its test computes."""
+    nb = "milk_collection/milk_collection.ipynb"
+    g = params(r / nb)
+    f = g["farms"]
+    assert g["everyDay"] == list(range(len(g["everyDay"])))
+    data = {"at": [g["coordinates"][i] for i in f], "collect": [g["collect"][i] for i in f]}
+    data |= {"every": len(g["everyDay"]), "cap": g["tankerCap"], "fix": 11}
+    return case("milk", nb, data, [])
+
+
+def drone(r):
+    """The notebook's pandas steps, on the checkout's CSVs: June 2019 calls, seven bases, rates per
+    hour rounded to 6 places, one row per (location, base) after dropping duplicates."""
+    import pandas as pd
+
+    nb = "drone_network/drone_network.ipynb"
+    base = r / "drone_network"
+    ohca = pd.read_csv(base / "OHCAs.csv", index_col=0)
+    st = pd.read_csv(base / "BaseStations.csv", index_col=0)
+    dist = pd.read_csv(base / "Base_to_OHCA_distance.csv", index_col=[0, 1])
+    ohca = ohca[(ohca.ReceivedTime >= "2019-05-31") & (ohca.ReceivedTime <= "2019-06-30")]
+    st = st.loc[[2, 3, 5, 14, 25, 31, 35]].copy()
+    st["Base"] = st.Street + " " + st.Type
+    dist = dist.loc[dist.index.get_level_values(1).isin(ohca.index)]
+    dist = dist.loc[dist.index.get_level_values(0).isin(st.index)]
+    df = dist.join(ohca[["Incident_Location"]]).join(st["Base"]).drop_duplicates()
+    d = df.set_index(["Incident_Location", "Base"])["Harversine Distance (meters)"]
+    rate = (ohca.Incident_Location.value_counts() / (24 * 30)).round(6)
+    locs, bases = list(d.index.get_level_values(0).unique()), list(d.index.get_level_values(1).unique())
+    data = {
+        "bases": bases,
+        "rate": [float(rate[i]) for i in locs],
+        "dist": [[float(d[i, j]) for j in bases] for i in locs],
+        "drones": 4,
+        "speed": 100,
+        "maintenance": 25 / 60,
+    }
+    note = "the notebook's flight-time term is metres over km/h, 1000 times the flight time in hours; the port converts"
+    return case("drone", nb, data, oracle(r / nb), note, fixed=True)
+
+
+def techs(r, sc):
+    """The notebook's pandas reading of its workbook: technicians below the priority and duration
+    rows, a 1 marking each skill, the upper triangle of the travel times."""
+    import pandas as pd
+
+    nb = "technician_routing_scheduling/technician_routing_scheduling.ipynb"
+    xl = r / f"technician_routing_scheduling/data-Sce{sc}.xlsx"
+    df = pd.read_excel(xl, sheet_name="Technicians")
+    names = [str(v) for v in df.iloc[2:, 0]]
+    techs = [{"name": n, "cap": float(df.iloc[2 + i, 1]), "depot": str(df.iloc[2 + i, 2])} for i, n in enumerate(names)]
+    jobs = {
+        df.columns[j]: (
+            float(df.iloc[0, j]),
+            float(df.iloc[1, j]),
+            [i for i in range(len(names)) if df.iloc[2 + i, j] == 1],
+        )
+        for j in range(3, len(df.columns))
+    }
+    lo = pd.read_excel(xl, sheet_name="Locations", index_col=0)
+    locs = [str(v) for v in lo.index]
+    n = len(locs)
+    tm = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1, n):
+            tm[i][j] = tm[j][i] = float(lo.iloc[i, j])
+    cu = pd.read_excel(xl, sheet_name="Customers")
+    customers = []
+    for row in cu.itertuples(index=False):
+        if row[2] in jobs:
+            w, p, by = jobs[row[2]]
+            customers.append(
+                {"name": row[0], "loc": row[1], "duration": p, "priority": w, "by": by}
+                | {"start": float(row[3]), "end": float(row[4]), "due": float(row[5])}
+            )
+    data = {"locations": locs, "time": tm, "techs": techs, "customers": customers}
+    return case("techs", nb, data, [oracle(r / nb)[0 if sc == 0 else 1]])
+
+
+def median(r):
+    """The notebook's instance with numpy's generator seeded too: the notebook draws the customers
+    per Gaussian from numpy's unseeded global generator, so its own instance is not reproducible."""
+    import numpy as np
+    from sklearn.cluster import MiniBatchKMeans
+
+    nb = "customer_assignment/customer_assignment.ipynb"
+    import random
+
+    seed, n_cand, n_cl, n_g = 10101, 20, 50, 10
+    random.seed(seed)
+    np.random.seed(seed)
+    per = np.random.multinomial(50000, [1 / n_g] * n_g)
+    locs = []
+    for i in range(n_g):
+        c = (random.random() - 0.5, random.random() - 0.5)
+        locs += [(random.gauss(0, 0.1) + c[0], random.gauss(0, 0.1) + c[1]) for _ in range(per[i])]
+    fac = [(random.random() - 0.5, random.random() - 0.5) for _ in range(n_cand)]
+    km = MiniBatchKMeans(n_clusters=n_cl, init_size=3 * n_cl, random_state=seed).fit(locs)
+    cen = list(km.cluster_centers_)
+    w = [int(v) for v in np.histogram(list(km.labels_), bins=n_cl)[0]]
+    pairs = []
+    for f in range(n_cand):
+        for c in range(n_cl):
+            dd = float(np.linalg.norm(np.array(fac[f]) - cen[c]))
+            if dd < 0.99:
+                pairs.append([f, c, dd])
+    data = {"sites": n_cand, "weights": w, "pairs": pairs, "max_sites": 8}
+    note = "numpy seeded with the notebook's seed, which it leaves unseeded; the oracle is the enumeration test"
+    return case("median", nb, data, [], note)
+
+
+def tracking(r):
+    """The notebook's cleaning (its utils.clean_data) and its seeded sample of 20 tickers; the
+    weights it printed, in percent, for the two solves."""
+    import random
+
+    import pandas as pd
+
+    nb = "index_tracking/index_tracking.ipynb"
+    base = r / "index_tracking"
+    sys.path.insert(0, str(base))
+    from utils.data_clean import clean_data
+
+    px = pd.read_csv(base / "data/prices_SP100_2015-01-01_2022-01-01.csv", parse_dates=["Date"])
+    px.columns = px.columns.str.strip().str.replace(chr(0xFEFF), "", regex=False)
+    px = px.set_index("Date")
+    import contextlib
+    import io
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        _, train, _ = clean_data(px, "^SP100", thresh_valid_data=0.95, size_train=0.75)
+    sys.path.remove(str(base))
+    mkt = train["^SP100"]
+    rest = train.drop("^SP100", axis=1)
+    random.seed(20220209)
+    tick = random.sample(list(rest.columns), 20)
+    printed = []
+    for c in json.loads((r / nb).read_text(encoding="utf-8"))["cells"]:
+        for o in c.get("outputs", []):
+            t = "".join(o.get("text", ""))
+            if "Solution" in t:
+                w = dict(ln.split(":") for ln in t.splitlines() if ln.startswith("SP100_"))
+                printed.append([float(w[k].strip().rstrip("%")) for k in tick])
+    data = {
+        "tickers": tick,
+        "returns": rest[tick].values.tolist(),
+        "index": mkt.values.tolist(),
+        "max_assets": 10,
+        "cap": 0.2,
+    }
+    d = case("tracking", nb, data, [])
+    d["printed"] = printed
+    return d
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -1031,6 +1258,21 @@ def main():
         "battery_s": battery(r)[0],
         "battery_lgs": battery(r)[1],
         "aviation_planning": aviation(r),
+        "railway_linear": railway(r, "linear"),
+        "railway_xshape": railway(r, "xshape"),
+        "railway_yshape": railway(r, "yshape"),
+        "burrito_day1": burrito(r, 1),
+        "burrito_day2": burrito(r, 2),
+        "burrito_day3": burrito(r, 3),
+        "burrito_day4": burrito(r, 4),
+        "fantasy_basketball": lineup(r),
+        "lost_luggage": luggage(r),
+        "milk_collection": milk(r),
+        "drone_network": drone(r),
+        "technician_routing_0": techs(r, 0),
+        "technician_routing_3": techs(r, 3),
+        "customer_assignment": median(r),
+        "index_tracking": tracking(r),
     }
     for k, d in enumerate(covid(r), 1):
         cases[f"covid19_facility_{k}"] = d

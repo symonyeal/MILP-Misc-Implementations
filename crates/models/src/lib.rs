@@ -25,6 +25,7 @@ pub mod covid;
 pub mod cutstock;
 pub mod dea;
 pub mod decentral;
+pub mod drone;
 pub mod economic;
 pub mod facility;
 pub mod factory;
@@ -32,9 +33,13 @@ pub mod farm;
 pub mod fit;
 pub mod folding;
 pub mod food;
+pub mod lineup;
 pub mod logic;
+pub mod luggage;
 pub mod manpower;
 pub mod market;
+pub mod median;
+pub mod milk;
 pub mod mining;
 pub mod network;
 pub mod opencast;
@@ -42,11 +47,15 @@ pub mod playlist;
 pub mod pooling;
 pub mod portfolio;
 pub mod power;
+pub mod railway;
 pub mod rap;
 pub mod refinery;
 pub mod relief;
 pub mod rental;
 pub mod subset;
+pub mod techs;
+pub mod tracking;
+pub mod trucks;
 pub mod tsp;
 pub mod uc;
 pub mod wind;
@@ -140,6 +149,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "avocado" => avocado::run(&de(v)?),
         "aviation" => aviation::run(&de(v)?),
         "battery" => battery::run(&de(v)?),
+        "trucks" => trucks::run(&de(v)?),
         "campaign" => campaign::run(&de(v)?),
         "colour" => colour::run(&de(v)?),
         "comparison" => comparison::run(&de(v)?),
@@ -149,6 +159,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "cutstock" => cutstock::run(&de(v)?),
         "dea" => dea::run(&de(v)?),
         "decentral" => decentral::run(&de(v)?),
+        "drone" => drone::run(&de(v)?),
         "economic" => economic::run(&de(v)?),
         "facility" => facility::run(&de(v)?),
         "farm" => farm::run(&de(v)?),
@@ -156,9 +167,13 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "fit" => fit::run(&de(v)?),
         "folding" => folding::run(&de(v)?),
         "food" => food::run(&de(v)?),
+        "lineup" => lineup::run(&de(v)?),
         "logic" => logic::run(&de(v)?),
+        "luggage" => luggage::run(&de(v)?),
         "manpower" => manpower::run(&de(v)?),
         "market" => market::run(&de(v)?),
+        "median" => median::run(&de(v)?),
+        "milk" => milk::run(&de(v)?),
         "mining" => mining::run(&de(v)?),
         "network" => network::run(&de(v)?),
         "opencast" => opencast::run(&de(v)?),
@@ -166,11 +181,14 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "pooling" => pooling::run(&de(v)?),
         "portfolio" => portfolio::run(&de(v)?),
         "power" => power::run(&de(v)?),
+        "railway" => railway::run(&de(v)?),
         "rap" => rap::run(&de(v)?),
         "refinery" => refinery::run(&de(v)?),
         "relief" => relief::run(&de(v)?),
         "rental" => rental::run(&de(v)?),
         "subset" => subset::run(&de(v)?),
+        "techs" => techs::run(&de(v)?),
+        "tracking" => tracking::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
         "uc" => uc::run(&de(v)?),
         "wind" => wind::run(&de(v)?),
@@ -187,6 +205,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "avocado" => avocado::model(&de(v)?),
         "aviation" => aviation::model(&de(v)?, false).0,
         "battery" => battery::model(&de(v)?, None),
+        "trucks" => trucks::model(&de(v)?),
         "campaign" => campaign::model(&de(v)?),
         "colour" => colour::model(&de(v)?),
         "comparison" => comparison::model(&de(v)?),
@@ -196,6 +215,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "cutstock" => cutstock::model(&de(v)?),
         "dea" => dea::model(&de(v)?, 0),
         "decentral" => decentral::model(&de(v)?),
+        "drone" => drone::model(&de(v)?, false),
         "economic" => economic::model(&de(v)?),
         "facility" => facility::model(&de(v)?),
         "farm" => farm::model(&de(v)?),
@@ -203,9 +223,13 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "fit" => fit::model(&de(v)?, false),
         "folding" => folding::model(&de(v)?).0,
         "food" => food::model(&de(v)?).0,
+        "lineup" => lineup::model(&de(v)?).0,
         "logic" => logic::model(&de(v)?),
+        "luggage" => luggage::model(&de(v)?).0,
         "manpower" => manpower::model(&de(v)?).0,
         "market" => market::model(&de(v)?),
+        "median" => median::model(&de(v)?),
+        "milk" => milk::model(&de(v)?).0,
         "mining" => mining::model(&de(v)?).0,
         "network" => network::model(&de(v)?).0,
         "opencast" => opencast::model(&de(v)?),
@@ -213,11 +237,14 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "pooling" => pooling::model(&de(v)?, true).0,
         "portfolio" => portfolio::model(&de(v)?, None),
         "power" => power::model(&de(v)?).0,
+        "railway" => railway::model(&de(v)?).0,
         "rap" => rap::model(&de(v)?),
         "refinery" => refinery::model(&de(v)?).0,
         "relief" => relief::model(&de(v)?),
         "rental" => rental::model(&de(v)?, false),
         "subset" => subset::model(&de(v)?, 1).0,
+        "techs" => techs::model(&de(v)?).0,
+        "tracking" => tracking::model(&de(v)?, true),
         "tsp" => tsp::model(&de(v)?).0,
         "uc" => uc::model(&de(v)?).0,
         "wind" => wind::model(&de(v)?),

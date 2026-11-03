@@ -67,10 +67,14 @@ impl H {
         h.flag("output_flag", std::env::var_os("MILP_LOG").is_some());
         // Relative MIP gap 1e-9, not HiGHS's 1e-4: "optimal" means optimal, not within 0.01%
         // (SCIP's default gap is already 0).
-        let k = CString::new("mip_rel_gap").unwrap();
-        // SAFETY: live handle, NUL-terminated key.
-        unsafe { Highs_setDoubleOptionValue(h.0, k.as_ptr(), 1e-9) };
+        h.real("mip_rel_gap", 1e-9);
         h
+    }
+
+    pub fn real(&self, k: &str, v: f64) {
+        let k = CString::new(k).unwrap();
+        // SAFETY: live handle, NUL-terminated key.
+        unsafe { Highs_setDoubleOptionValue(self.0, k.as_ptr(), v) };
     }
 
     pub fn flag(&self, k: &str, v: bool) {
@@ -164,6 +168,10 @@ impl H {
 pub fn solve(m: &crate::Model) -> crate::Sol {
     use crate::{Sol, Status};
     let h = H::new();
+    if let Some(t) = m.feastol {
+        h.real("primal_feasibility_tolerance", t);
+        h.real("mip_feasibility_tolerance", t);
+    }
     let mip = m.int.iter().any(|&b| b);
     let integ: Vec<i32> = if mip { m.int.iter().map(|&b| b as i32).collect() } else { vec![] };
     let mut q = hessian(m);

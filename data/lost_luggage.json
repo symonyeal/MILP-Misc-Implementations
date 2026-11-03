@@ -1,0 +1,10 @@
+{
+ "case": "luggage",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/lost_luggage_distribution/lost_luggage_distribution.ipynb",
+ "oracle": [],
+ "data": {
+  "points": [[0, 0], [8, 36], [48, 4], [16, 7], [31, 48], [28, 30], [41, 24], [50, 13], [6, 31], [1, 24], [27, 38], [48, 49], [0, 44], [28, 17], [46, 14], [37, 6], [20, 1]],
+  "vans": 6,
+  "limit": 120
+ }
+}

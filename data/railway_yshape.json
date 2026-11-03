@@ -1,0 +1,33 @@
+{
+ "case": "railway",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/railway_dispatching/railway_dispatching.ipynb",
+ "oracle": [],
+ "note": "the notebook's big-M sums resource ids, not durations; the port uses durations, and neither binds",
+ "data": {
+  "resources": [
+    {"id": 0, "duration": 2.0, "capacity": 2},
+    {"id": 1, "duration": 6.0, "capacity": 1},
+    {"id": 2, "duration": 4.0, "capacity": 2},
+    {"id": 3, "duration": 8.0, "capacity": 1},
+    {"id": 4, "duration": 3.0, "capacity": 2},
+    {"id": 5, "duration": 5.0, "capacity": 1},
+    {"id": 6, "duration": 2.0, "capacity": 2},
+    {"id": 7, "duration": 3.0, "capacity": 1},
+    {"id": 8, "duration": 2.0, "capacity": 2},
+    {"id": 9, "duration": 5.0, "capacity": 1},
+    {"id": 10, "duration": 3.0, "capacity": 2}
+   ],
+  "trains": [
+    {"id": "A", "route": [0, 1, 2, 3, 4, 5, 6]},
+    {"id": "B", "route": [2, 3, 4, 7, 8, 9, 10]},
+    {"id": "C", "route": [4, 5, 6]},
+    {"id": "D", "route": [8, 9, 10]},
+    {"id": "E", "route": [3, 2, 1, 0]},
+    {"id": "F", "route": [10, 9, 8, 7, 4, 3, 2, 1, 0]},
+    {"id": "G", "route": [6, 5, 4, 3, 2, 1, 0]},
+    {"id": "H", "route": [4, 3, 2, 1, 0]},
+    {"id": "I", "route": [10, 9, 8, 7, 4, 3, 2, 1, 0]},
+    {"id": "J", "route": [6, 5, 4, 3, 2, 1, 0]}
+   ]
+ }
+}

@@ -1,0 +1,37 @@
+{
+ "case": "techs",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/technician_routing_scheduling/technician_routing_scheduling.ipynb",
+ "oracle": [0.0],
+ "data": {
+  "locations": ["Heidelberg", "Freiburg im Breisgau", "Mannheim", "Karlsruhe", "Baden-Baden", "Buehl", "Offenburg", "Lahr/Schwarzwald", "Loerrach"],
+  "time": [
+    [0.0, 120.0, 24.0, 50.0, 67.0, 71.0, 88.0, 98.0, 150.0],
+    [120.0, 0.0, 125.0, 85.0, 68.0, 62.0, 45.0, 39.0, 48.0],
+    [24.0, 125.0, 0.0, 53.0, 74.0, 77.0, 95.0, 106.0, 160.0],
+    [50.0, 85.0, 53.0, 0.0, 31.0, 35.0, 51.0, 61.0, 115.0],
+    [67.0, 68.0, 74.0, 31.0, 0.0, 16.0, 36.0, 46.0, 98.0],
+    [71.0, 62.0, 77.0, 35.0, 16.0, 0.0, 30.0, 40.0, 92.0],
+    [88.0, 45.0, 95.0, 51.0, 36.0, 30.0, 0.0, 26.0, 80.0],
+    [98.0, 39.0, 106.0, 61.0, 46.0, 40.0, 26.0, 0.0, 70.0],
+    [150.0, 48.0, 160.0, 115.0, 98.0, 92.0, 80.0, 70.0, 0.0]
+   ],
+  "techs": [
+    {"name": "Albert", "cap": 480.0, "depot": "Heidelberg"},
+    {"name": "Bob", "cap": 480.0, "depot": "Heidelberg"},
+    {"name": "Carlos", "cap": 480.0, "depot": "Freiburg im Breisgau"},
+    {"name": "Doris", "cap": 480.0, "depot": "Freiburg im Breisgau"},
+    {"name": "Ed", "cap": 480.0, "depot": "Heidelberg"},
+    {"name": "Flor", "cap": 360.0, "depot": "Freiburg im Breisgau"},
+    {"name": "Gina", "cap": 360.0, "depot": "Heidelberg"}
+   ],
+  "customers": [
+    {"name": "Customer1", "loc": "Mannheim", "duration": 30.0, "priority": 3.0, "by": [0, 1, 2, 3, 6], "start": 0.0, "end": 30.0, "due": 60.0},
+    {"name": "Customer2", "loc": "Karlsruhe", "duration": 30.0, "priority": 3.0, "by": [0, 1, 2, 3, 6], "start": 30.0, "end": 150.0, "due": 180.0},
+    {"name": "Customer3", "loc": "Baden-Baden", "duration": 60.0, "priority": 1.0, "by": [1, 2, 4, 5, 6], "start": 60.0, "end": 180.0, "due": 240.0},
+    {"name": "Customer4", "loc": "Buehl", "duration": 60.0, "priority": 2.0, "by": [3, 5, 6], "start": 120.0, "end": 240.0, "due": 300.0},
+    {"name": "Customer5", "loc": "Offenburg", "duration": 60.0, "priority": 2.0, "by": [3, 5, 6], "start": 240.0, "end": 360.0, "due": 420.0},
+    {"name": "Customer6", "loc": "Lahr/Schwarzwald", "duration": 60.0, "priority": 4.0, "by": [3, 6], "start": 300.0, "end": 420.0, "due": 480.0},
+    {"name": "Customer7", "loc": "Loerrach", "duration": 60.0, "priority": 1.0, "by": [0, 2, 4], "start": 360.0, "end": 480.0, "due": 540.0}
+   ]
+ }
+}
