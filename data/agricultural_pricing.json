@@ -1,0 +1,24 @@
+{
+ "case": "agriprice",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/agricultural_pricing/agricultural_pricing.ipynb",
+ "oracle": [
+   [2.06639826037, 2.066493116553]
+  ],
+ "data": {
+  "products": [
+    {"name": "milk", "q0": 4.82, "p0": 0.297, "e": 0.4},
+    {"name": "butter", "q0": 0.32, "p0": 0.72, "e": 2.7},
+    {"name": "cheese1", "q0": 0.21, "p0": 1.05, "e": 1.1},
+    {"name": "cheese2", "q0": 0.07, "p0": 0.815, "e": 0.4}
+   ],
+  "components": [
+    {"name": "fat", "cap": 600, "share": [0.04, 0.8, 0.35, 0.25]},
+    {"name": "dryMatter", "cap": 750, "share": [0.09, 0.02, 0.3, 0.4]}
+   ],
+  "cross": [
+    ["cheese1", "cheese2", 0.1],
+    ["cheese2", "cheese1", 0.4]
+   ],
+  "index": 1.939
+ }
+}

@@ -1,5 +1,7 @@
 //! A `Model` solved by SCIP 10 through russcip. SCIP takes a linear objective, so x'Q₀x moves into
-//! an epigraph row: min c'x + z with x'Q₀x − z ≤ 0 (max: ≥ 0), z free.
+//! an epigraph row: min c'x + z with x'Q₀x − z ≤ 0 (max: ≥ 0), z free. Spatial branching needs finite
+//! bounds on the columns of nonconvex terms, and an unbounded LP relaxation of the epigraph stalls
+//! SCIP (measured: free columns in a convex objective never terminate), so models bound them.
 
 use russcip::prelude::*;
 use russcip::{Status as St, Variable};
@@ -23,7 +25,8 @@ fn col(s: &mut russcip::Model<russcip::ProblemCreated>, l: f64, u: f64, c: f64, 
 }
 
 pub fn solve(m: &Model) -> Sol {
-    let s = russcip::Model::default().hide_output();
+    let s = russcip::Model::default();
+    let s = if std::env::var_os("MILP_LOG").is_some() { s } else { s.hide_output() };
     let mut s = if m.max { s.maximize() } else { s.minimize() };
     let x: Vec<Variable> = (0..m.n()).map(|j| col(&mut s, m.l[j], m.u[j], m.c[j], m.int[j])).collect();
     let mut q: Vec<Vec<(usize, usize, f64)>> = vec![Vec::new(); m.m()];

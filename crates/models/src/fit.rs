@@ -41,24 +41,17 @@ pub fn model(d: &Data, cheb: bool) -> Model {
 
 pub fn run(d: &Data) -> Out {
     let mut text = String::new();
-    let mut obj = Vec::new();
-    let mut last = None;
-    for cheb in [false, true] {
-        let m = model(d, cheb);
-        let s = m.solve();
-        if !s.x.is_empty() {
-            let _ = writeln!(
-                text,
-                "{}: y = {:.4} + {:.4} x, deviation {:.5}",
-                if cheb { "L∞" } else { "L1" },
-                s.x[0],
-                s.x[1],
-                s.obj
-            );
-        }
-        obj.push(s.obj);
-        last = Some((m, s));
-    }
-    let (m, s) = last.unwrap();
-    Out::of(&m, &s, obj, text)
+    let runs: Vec<(Model, milp::Sol)> = [false, true]
+        .into_iter()
+        .map(|cheb| {
+            let m = model(d, cheb);
+            let s = m.solve();
+            if !s.x.is_empty() {
+                let lab = if cheb { "L∞" } else { "L1" };
+                let _ = writeln!(text, "{lab}: y = {:.4} + {:.4} x, deviation {:.5}", s.x[0], s.x[1], s.obj);
+            }
+            (m, s)
+        })
+        .collect();
+    Out::all(&runs, text)
 }

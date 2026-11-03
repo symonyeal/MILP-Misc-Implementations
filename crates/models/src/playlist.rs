@@ -94,12 +94,10 @@ fn model_on(d: &Data, f: &[f64], cty: bool) -> (Model, Vec<usize>) {
 pub fn run(d: &Data) -> Out {
     let f = scores(d);
     let mut text = String::new();
-    let mut obj = Vec::new();
-    let mut last = None;
+    let mut runs = Vec::new();
     for cty in [false, true] {
         let (m, a) = model_on(d, &f, cty);
         let s = m.solve();
-        obj.push(s.obj);
         if !s.x.is_empty() {
             let pick: Vec<usize> = (0..a.len()).filter(|&k| s.x[k] > 0.5).map(|k| a[k]).collect();
             let mut cs: Vec<&str> = pick.iter().map(|&v| d.artists[v].country.as_str()).collect();
@@ -110,10 +108,9 @@ pub fn run(d: &Data) -> Out {
             let names: Vec<&str> = pick.iter().map(|&v| d.artists[v].name.as_str()).collect();
             let _ = writeln!(text, "  {}", names.join("; "));
         }
-        last = Some((m, s));
+        runs.push((m, s));
     }
-    let (m, s) = last.unwrap();
-    Out::of(&m, &s, obj, text)
+    Out::all(&runs, text)
 }
 
 #[cfg(test)]

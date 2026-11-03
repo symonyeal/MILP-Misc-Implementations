@@ -1,0 +1,32 @@
+{
+ "case": "pooling",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/pooling/std_pooling.ipynb",
+ "oracle": [
+   [439182.5892869, 439182.5893721],
+   [439182.5892869, 439182.5893721]
+  ],
+ "note": "the notebook's P-formulation run hit its time limit at 411530.70 (gap 103%); both oracles are the Q optimum",
+ "data": {
+  "attrs": ["bnz", "den", "moz", "roz"],
+  "sources": [
+    {"name": "s1", "cost": 49.2, "supply": 6097.56, "q": [3, 0.82, 90.5, 99.2]},
+    {"name": "s2", "cost": 62.0, "supply": 16129, "q": [0, 0.62, 83.5, 87.9]},
+    {"name": "s3", "cost": 300.0, "supply": 500, "q": [0, 0.75, 98.7, 114]}
+   ],
+  "targets": [
+    {"name": "t1", "price": 190, "demand": 500, "lo": {"den": 0.74, "roz": 95, "moz": 85}, "hi": {"den": 0.79}},
+    {"name": "t2", "price": 230, "demand": 500, "lo": {"den": 0.74, "roz": 96, "moz": 88}, "hi": {"den": 0.79, "bnz": 0.9}},
+    {"name": "t3", "price": 150, "demand": 500, "lo": {"den": 0.74, "roz": 91}, "hi": {"den": 0.79}}
+   ],
+  "pools": [
+    {"name": "p1", "cap": 1250},
+    {"name": "p2", "cap": 1750}
+   ],
+  "direct": [
+    ["s1", "t2", 750.0],
+    ["s2", "t1", null],
+    ["s2", "t3", null],
+    ["s3", "t1", 750.0]
+   ]
+ }
+}

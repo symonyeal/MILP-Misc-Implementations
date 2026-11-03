@@ -12,6 +12,7 @@ use milp::{Model, Sol, Status};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+pub mod agriprice;
 pub mod colour;
 pub mod cover;
 pub mod cutstock;
@@ -22,6 +23,8 @@ pub mod food;
 pub mod network;
 pub mod opencast;
 pub mod playlist;
+pub mod pooling;
+pub mod portfolio;
 pub mod tsp;
 pub mod workforce;
 
@@ -46,23 +49,59 @@ impl Out {
         Out { st: s.st, obj, viol, text }
     }
 
-    /// The acceptance rule: optimal, violation ≤ 1e-6, and every oracle objective met to 1e-6
-    /// relative (absolute below 1).
-    pub fn pass(&self, oracle: &[f64]) -> bool {
-        let hit = oracle.len() <= self.obj.len()
-            && oracle.iter().zip(&self.obj).all(|(a, b)| (a - b).abs() <= 1e-6 * a.abs().max(1.0));
+    /// The outcome of a sequence of solves (model, solution), one objective each: the first
+    /// non-optimal status, else optimal, and the largest violation of any solution of its model.
+    fn all(runs: &[(Model, Sol)], text: String) -> Out {
+        let outs: Vec<Out> = runs.iter().map(|(m, s)| Out::of(m, s, vec![s.obj], String::new())).collect();
+        let st = outs.iter().map(|o| o.st).find(|&st| st != Status::Optimal).unwrap_or(Status::Optimal);
+        let viol = outs.iter().map(|o| o.viol).fold(0.0, |a, b| if b > a || b.is_nan() { b } else { a });
+        let mut text = text;
+        for o in &outs {
+            text.push_str(&o.text);
+        }
+        Out { st, obj: runs.iter().map(|(_, s)| s.obj).collect(), viol, text }
+    }
+
+    /// The acceptance rule: optimal, violation ≤ 1e-6, and every oracle objective met.
+    pub fn pass(&self, o: &Oracle) -> bool {
+        let hit = o.v.len() <= self.obj.len() && o.v.iter().zip(&self.obj).all(|(&(a, b), &z)| o.hit(a, b, z));
         self.st == Status::Optimal && self.viol <= 1e-6 && hit
     }
 }
 
-/// A case file: (case, data, oracle).
-pub fn read(path: &std::path::Path) -> Result<(String, Value, Vec<f64>), String> {
+/// The Gurobi objectives a notebook recorded, in solve order. Each is an interval [a, b]: an exact
+/// optimum has a = b; a MIP or nonconvex solve that stopped within its gap gives its incumbent and
+/// best bound. An objective z meets [a, b] when a − t ≤ z ≤ b + t with t = max(rtol |a|, 1e-9);
+/// rtol is 1e-6 unless the case file states a wider one (with a note saying why).
+#[derive(Clone, Debug, Default)]
+pub struct Oracle {
+    pub v: Vec<(f64, f64)>,
+    pub rtol: f64,
+}
+
+impl Oracle {
+    fn hit(&self, a: f64, b: f64, z: f64) -> bool {
+        let t = (self.rtol * a.abs()).max(1e-9);
+        a - t <= z && z <= b + t
+    }
+}
+
+/// A case file: (case, data, oracle). An oracle entry is a number or a pair [incumbent, bound].
+pub fn read(path: &std::path::Path) -> Result<(String, Value, Oracle), String> {
     let at = |e: String| format!("{}: {e}", path.display());
     let s = std::fs::read_to_string(path).map_err(|e| at(e.to_string()))?;
     let mut v: Value = serde_json::from_str(&s).map_err(|e| at(e.to_string()))?;
     let case = v["case"].as_str().ok_or_else(|| at("no case".into()))?.to_string();
-    let oracle = v["oracle"].as_array().map(|a| a.iter().filter_map(Value::as_f64).collect()).unwrap_or_default();
-    Ok((case, v["data"].take(), oracle))
+    let mut o = Oracle { v: Vec::new(), rtol: v["rtol"].as_f64().unwrap_or(1e-6) };
+    for e in v["oracle"].as_array().into_iter().flatten() {
+        let ab = match e {
+            Value::Array(p) if p.len() == 2 => p[0].as_f64().zip(p[1].as_f64()),
+            _ => e.as_f64().map(|a| (a, a)),
+        };
+        let (a, b) = ab.ok_or_else(|| at(format!("bad oracle entry {e}")))?;
+        o.v.push((a.min(b), a.max(b)));
+    }
+    Ok((case, v["data"].take(), o))
 }
 
 fn de<D: DeserializeOwned>(v: Value) -> Result<D, String> {
@@ -72,6 +111,7 @@ fn de<D: DeserializeOwned>(v: Value) -> Result<D, String> {
 /// `run` of the named case on its data.
 pub fn run(case: &str, v: Value) -> Result<Out, String> {
     Ok(match case {
+        "agriprice" => agriprice::run(&de(v)?),
         "colour" => colour::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
@@ -82,6 +122,8 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "network" => network::run(&de(v)?),
         "opencast" => opencast::run(&de(v)?),
         "playlist" => playlist::run(&de(v)?),
+        "pooling" => pooling::run(&de(v)?),
+        "portfolio" => portfolio::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
         "workforce" => workforce::run(&de(v)?),
         _ => return Err(format!("unknown case {case}")),
@@ -91,6 +133,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
 /// `model` of the named case on its data.
 pub fn model(case: &str, v: Value) -> Result<Model, String> {
     Ok(match case {
+        "agriprice" => agriprice::model(&de(v)?),
         "colour" => colour::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
@@ -101,6 +144,8 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "network" => network::model(&de(v)?).0,
         "opencast" => opencast::model(&de(v)?),
         "playlist" => playlist::model(&de(v)?, false).0,
+        "pooling" => pooling::model(&de(v)?, true).0,
+        "portfolio" => portfolio::model(&de(v)?, None),
         "tsp" => tsp::model(&de(v)?).0,
         "workforce" => workforce::model(&de(v)?).0,
         _ => return Err(format!("unknown case {case}")),

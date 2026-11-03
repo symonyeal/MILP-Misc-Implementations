@@ -209,11 +209,15 @@ impl Model {
         self.solve_on(if self.linear() { Backend::Highs } else { Backend::Scip })
     }
 
-    /// Solve on the named backend; HiGHS refuses quadratic terms (programmer error).
+    /// Solve on the named backend. HiGHS takes linear models and continuous QPs with a convex
+    /// objective (positive semidefinite Q₀ when minimising), with no quadratic rows; a caller that
+    /// knows its QP is convex sends it there for HiGHS's exact QP solver, since SCIP meets the
+    /// objective's epigraph row only to its feasibility tolerance (1e-6 absolute).
     pub fn solve_on(&self, b: Backend) -> Sol {
         match b {
             Backend::Highs => {
-                assert!(self.linear(), "HiGHS here solves linear models only");
+                assert!(self.qa.is_empty(), "HiGHS takes no quadratic rows");
+                assert!(self.qc.is_empty() || !self.int.iter().any(|&b| b), "HiGHS takes no integer QP");
                 highs::solve(self)
             }
             Backend::Scip => scip::solve(self),
@@ -324,6 +328,23 @@ mod tests {
         let s = m.solve();
         assert_eq!(s.x[x], 3.0);
         assert!((s.obj - 0.16).abs() < 1e-9 && (m.obj(&s.x) - s.obj).abs() < 1e-12);
+    }
+
+    #[test]
+    fn convex_qp_on_both() {
+        // min x² + xy + y² − 3x, −10 <= x, y <= 10: 2x + y = 3, x + 2y = 0, so (2, −1), value −3.
+        let mut m = Model::new(false);
+        let (x, y) = (m.var(-10.0, 10.0, -3.0), m.var(-10.0, 10.0, 0.0));
+        m.qobj(x, x, 1.0);
+        m.qobj(x, y, 1.0);
+        m.qobj(y, y, 1.0);
+        // Measured: HiGHS places x within 2e-7 (its QP optimality tolerance), SCIP's outer
+        // approximation of the epigraph within 5e-4 (about √feastol); both values within 1e-6.
+        for (b, tx) in [(Backend::Highs, 1e-6), (Backend::Scip, 1e-3)] {
+            let s = m.solve_on(b);
+            assert_eq!(s.st, Status::Optimal, "{b:?}");
+            assert!((s.obj + 3.0).abs() < 1e-6 && (s.x[x] - 2.0).abs() < tx, "{b:?} {} {}", s.obj, s.x[x]);
+        }
     }
 
     #[test]

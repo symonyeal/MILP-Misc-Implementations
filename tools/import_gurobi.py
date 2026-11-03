@@ -9,6 +9,7 @@ Usage: python tools/import_gurobi.py <modeling-examples checkout> [out dir, defa
 
 import csv
 import json
+import os
 import sys
 import types
 from collections import Counter
@@ -30,31 +31,43 @@ def stub():
 
 
 def params(nb):
-    """Globals after the code cells that precede the first model."""
+    """Globals after the code cells that precede the first model, run in the notebook's folder."""
     g = {}
-    for c in json.loads(nb.read_text(encoding="utf-8"))["cells"]:
-        s = "".join(c["source"])
-        if c["cell_type"] != "code" or s.lstrip().startswith("%"):
-            continue
-        if "Model(" in s:
-            break
-        exec(s, g)  # noqa: S102 -- the notebook's own parameter cells are the data source
+    here = os.getcwd()
+    os.chdir(nb.parent)
+    try:
+        for c in json.loads(nb.read_text(encoding="utf-8"))["cells"]:
+            s = "".join(c["source"])
+            if c["cell_type"] != "code" or s.lstrip().startswith("%"):
+                continue
+            if "Model(" in s:
+                break
+            exec(s, g)  # noqa: S102 -- the notebook's own parameter cells are the data source
+    finally:
+        os.chdir(here)
     return g
 
 
 def oracle(nb):
-    """Recorded Gurobi objectives, in log order."""
+    """Recorded Gurobi objectives in log order: a number for an "Optimal objective" line, the pair
+    [incumbent, best bound] for a "Best objective a, best bound b" line (equal when proven)."""
     out = []
     for c in json.loads(nb.read_text(encoding="utf-8"))["cells"]:
         for o in c.get("outputs", []):
             for ln in "".join(o.get("text", "")).splitlines():
-                if ln.startswith(("Optimal objective", "Best objective")):
-                    out.append(float(ln.split()[2].rstrip(",")))
+                w = ln.replace(",", " ").split()
+                if ln.startswith("Optimal objective"):
+                    out.append(float(w[2]))
+                elif ln.startswith("Best objective"):
+                    a, b = float(w[2]), float(w[5])
+                    out.append(a if a == b else [a, b])
     return out
 
 
-def case(name, nb, data, orc, note=None):
+def case(name, nb, data, orc, note=None, rtol=None):
     d = {"case": name, "source": f"{SRC}/blob/master/{nb}", "oracle": orc}
+    if rtol:
+        d["rtol"] = rtol
     if note:
         d["note"] = note
     d["data"] = data
@@ -238,6 +251,60 @@ def playlist(r):
     return case("playlist", nb, data, [], note)
 
 
+def pooling(r):
+    nb = "pooling/std_pooling.ipynb"
+    g = params(r / nb)
+    at = sorted(g["attrs"])
+    data = {
+        "attrs": at,
+        "sources": [
+            {"name": i, "cost": g["cost"][i], "supply": g["supply"][i], "q": [g["content"][i][a] for a in at]}
+            for i in g["sources"]
+        ],
+        "targets": [
+            {"name": k, "price": g["price"][k], "demand": g["demand"][k], "lo": g["min_tol"][k], "hi": g["max_tol"][k]}
+            for k in g["targets"]
+        ],
+        "pools": [{"name": j, "cap": g["cap"][j]} for j in g["pools"]],
+        "direct": [[i, k, 750.0 if (i, k) in {("s1", "t2"), ("s3", "t1")} else None] for i, k in sorted(g["s2t"])],
+    }
+    # The notebook's first (P) run stopped at its 300 s limit at 411530.7 with a 103% gap; the
+    # second (Q) run is proven optimal, and the two formulations share their optimum.
+    q = oracle(r / nb)[1]
+    note = "the notebook's P-formulation run hit its time limit at 411530.70 (gap 103%); both oracles are the Q optimum"
+    return case("pooling", nb, data, [q, q], note)
+
+
+def agricultural(r):
+    nb = "agricultural_pricing/agricultural_pricing.ipynb"
+    g = params(r / nb)
+    D, C = g["dairy"], g["components"]
+    data = {
+        "products": [{"name": d, "q0": g["consumption"][d], "p0": g["price"][d], "e": g["elasticity"][d]} for d in D],
+        "components": [{"name": c, "cap": g["capacity"][c], "share": [g["qtyper"][c, d] for d in D]} for c in C],
+        # Cross elasticities between the two cheeses: e12 of cheese 1 to cheese 2's price, e21 the reverse.
+        "cross": [["cheese1", "cheese2", g["elasticity12"]], ["cheese2", "cheese1", g["elasticity21"]]],
+        "index": g["priceIndex"],
+    }
+    return case("agriprice", nb, data, oracle(r / nb))
+
+
+def portfolio(r):
+    nb = "portfolio_selection_optimization/portfolio_selection_optimization.ipynb"
+    g = params(r / nb)
+    data = {
+        "stocks": g["stocks"],
+        "mu": [float(v) for v in g["delta"]],
+        "sigma": [[float(v) for v in row] for row in g["sigma"]],
+        "frontier": 25,
+    }
+    note = (
+        "mu and sigma are the notebook's np.mean and np.cov of daily relative price changes in dummy_yfinance_2y.csv; "
+        "the oracles are Gurobi barrier values, two of which HiGHS's exactly feasible solutions beat by 1.2e-9 (4.6e-5 relative)"
+    )
+    return case("portfolio", nb, data, oracle(r / nb), note, rtol=5e-5)
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -268,6 +335,9 @@ def main():
         "tsp": tsp(r),
         "cutting_stock": cutting_stock(r),
         "playlist": playlist(r),
+        "pooling": pooling(r),
+        "agricultural_pricing": agricultural(r),
+        "portfolio": portfolio(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")

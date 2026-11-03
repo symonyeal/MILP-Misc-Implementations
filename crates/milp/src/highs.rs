@@ -62,7 +62,8 @@ impl H {
         // SAFETY: Highs_create returns an owned handle.
         let h = H(unsafe { Highs_create() });
         assert!(!h.0.is_null(), "HiGHS allocation failed");
-        h.flag("output_flag", false);
+        // MILP_LOG set: show the solver log (diagnosis only).
+        h.flag("output_flag", std::env::var_os("MILP_LOG").is_some());
         h
     }
 
@@ -72,7 +73,9 @@ impl H {
         unsafe { Highs_setBoolOptionValue(self.0, k.as_ptr(), v as Hi) };
     }
 
-    /// Highs_passModel; every slice must have the length its argument count states.
+    /// Highs_passModel; every slice must have the length its argument count states. The Hessian
+    /// q = (start, index, value) is lower triangular by column (`kHighsHessianFormatTriangular`),
+    /// the objective c'x + ½x'Qx; `integ` empty means all continuous.
     /// OUTPUT false if HiGHS rejects the model.
     pub fn pass(
         &self,
@@ -87,7 +90,10 @@ impl H {
         j: &[Hi],
         a: &[f64],
         integ: &[Hi],
+        q: Option<(&[Hi], &[Hi], &[f64])>,
     ) -> bool {
+        let (qp, qi, qv) = q.unwrap_or((&[], &[], &[]));
+        let ptr = |v: &[Hi]| if v.is_empty() { std::ptr::null() } else { v.as_ptr() };
         // SAFETY: every array outlives the call and has the length HiGHS reads.
         let st = unsafe {
             Highs_passModel(
@@ -95,9 +101,9 @@ impl H {
                 c.len() as Hi,
                 lo.len() as Hi,
                 a.len() as Hi,
-                0,
+                qv.len() as Hi,
                 ROWWISE,
-                0,
+                if q.is_some() { 1 } else { 0 },
                 sense,
                 c0,
                 c.as_ptr(),
@@ -108,10 +114,10 @@ impl H {
                 p.as_ptr(),
                 j.as_ptr(),
                 a.as_ptr(),
-                std::ptr::null(),
-                std::ptr::null(),
-                std::ptr::null(),
-                integ.as_ptr(),
+                ptr(qp),
+                ptr(qi),
+                if qv.is_empty() { std::ptr::null() } else { qv.as_ptr() },
+                ptr(integ),
             )
         };
         st != -1
@@ -143,15 +149,30 @@ impl H {
     }
 }
 
-/// A linear `Model` solved by HiGHS with its defaults.
+/// A linear model, or a continuous QP, solved by HiGHS with its defaults.
+///
+/// A QP's objective is first scaled by 2^k so that its largest Hessian entry lies in [1, 2):
+/// HiGHS 1.12's QP solver cycled without progress on a covariance Hessian with entries 7e-8 to
+/// 1e-3 (measured on the portfolio case) and converged once scaled. A power of two scales exactly,
+/// so the objective and duals are unscaled without rounding.
 pub fn solve(m: &crate::Model) -> crate::Sol {
     use crate::{Sol, Status};
     let h = H::new();
-    let integ: Vec<i32> = m.int.iter().map(|&b| b as i32).collect();
     let mip = m.int.iter().any(|&b| b);
+    let integ: Vec<i32> = if mip { m.int.iter().map(|&b| b as i32).collect() } else { vec![] };
+    let mut q = hessian(m);
+    let w = q.as_ref().map_or(1.0, |(_, _, v)| {
+        let top = v.iter().fold(0.0, |a: f64, b| a.max(b.abs()));
+        if top > 0.0 { 2f64.powi(-(top.log2().floor() as i32)) } else { 1.0 }
+    });
+    let c: Vec<f64> = m.c.iter().map(|c| c * w).collect();
+    if let Some((_, _, v)) = q.as_mut() {
+        v.iter_mut().for_each(|x| *x *= w);
+    }
     let sense = if m.max { -1 } else { 1 };
     let mut s = Sol { st: Status::Error(2), obj: f64::NAN, bound: f64::NAN, x: vec![], y: vec![] };
-    if !h.pass(sense, m.c0, &m.c, &m.l, &m.u, &m.lo, &m.hi, &m.p, &m.j, &m.a, &integ) {
+    let qr = q.as_ref().map(|(a, b, c)| (&a[..], &b[..], &c[..]));
+    if !h.pass(sense, m.c0 * w, &c, &m.l, &m.u, &m.lo, &m.hi, &m.p, &m.j, &m.a, &integ, qr) {
         return s;
     }
     let ms = h.run();
@@ -164,12 +185,40 @@ pub fn solve(m: &crate::Model) -> crate::Sol {
     };
     if matches!(s.st, Status::Optimal | Status::Limit) {
         let (x, y) = h.solution(m.n(), m.m());
-        s.obj = h.info("objective_function_value");
-        s.bound = if mip { h.info("mip_dual_bound") } else { s.obj };
+        s.obj = h.info("objective_function_value") / w;
+        s.bound = if mip { h.info("mip_dual_bound") / w } else { s.obj };
         s.x = x;
         if !mip {
-            s.y = y;
+            s.y = y.iter().map(|v| v / w).collect();
         }
     }
     s
+}
+
+/// Q₀ as HiGHS's lower-triangular Hessian: v x_j x_k adds 2v to Q_jj when j = k, else v to
+/// Q_{max(j,k), min(j,k)}, so that ½x'Qx = Σ v x_j x_k. None for a linear objective.
+fn hessian(m: &crate::Model) -> Option<(Vec<Hi>, Vec<Hi>, Vec<f64>)> {
+    if m.qc.is_empty() {
+        return None;
+    }
+    let mut t: Vec<(usize, usize, f64)> =
+        m.qc.iter().map(|&(j, k, v)| if j == k { (j, j, 2.0 * v) } else { (j.min(k), j.max(k), v) }).collect();
+    t.sort_by_key(|&(c, r, _)| (c, r));
+    let mut e: Vec<(usize, usize, f64)> = Vec::with_capacity(t.len());
+    for (c, r, x) in t {
+        match e.last_mut() {
+            Some(l) if (l.0, l.1) == (c, r) => l.2 += x,
+            _ => e.push((c, r, x)),
+        }
+    }
+    let mut p = vec![0 as Hi; m.n() + 1];
+    for t in &e {
+        p[t.0 + 1] += 1;
+    }
+    for c in 0..m.n() {
+        p[c + 1] += p[c];
+    }
+    p.pop();
+    let (i, v) = e.iter().map(|&(_, r, x)| (r as Hi, x)).unzip();
+    Some((p, i, v))
 }

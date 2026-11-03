@@ -24,7 +24,7 @@ fn run(paths: &[String]) -> Result<bool, String> {
         println!(
             "objective {:?} oracle {:?} violation {:.1e} -> {}",
             o.obj,
-            oracle,
+            oracle.v,
             o.viol,
             if pass { "pass" } else { "FAIL" }
         );
