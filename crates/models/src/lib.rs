@@ -41,6 +41,7 @@ pub mod portfolio;
 pub mod power;
 pub mod rap;
 pub mod refinery;
+pub mod rental;
 pub mod subset;
 pub mod tsp;
 pub mod wind;
@@ -158,6 +159,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "power" => power::run(&de(v)?),
         "rap" => rap::run(&de(v)?),
         "refinery" => refinery::run(&de(v)?),
+        "rental" => rental::run(&de(v)?),
         "subset" => subset::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
         "wind" => wind::run(&de(v)?),
@@ -198,6 +200,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "power" => power::model(&de(v)?).0,
         "rap" => rap::model(&de(v)?),
         "refinery" => refinery::model(&de(v)?).0,
+        "rental" => rental::model(&de(v)?, false),
         "subset" => subset::model(&de(v)?, 1).0,
         "tsp" => tsp::model(&de(v)?).0,
         "wind" => wind::model(&de(v)?),

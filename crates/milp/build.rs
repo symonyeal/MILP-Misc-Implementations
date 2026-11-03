@@ -36,6 +36,10 @@ fn main() {
     }
     println!("cargo:rerun-if-changed=HiGHS/Version.txt");
     println!("cargo:rerun-if-changed=build.rs");
+    // Dependents (models) read this as DEP_HIGHS_SCIP_LIBDIR, to give their binaries an rpath.
+    if let Ok(lib) = env::var("DEP_SCIP_LIBDIR") {
+        println!("cargo:scip_libdir={lib}");
+    }
     if t.contains("windows") {
         copy_scip_dlls();
     }

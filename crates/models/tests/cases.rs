@@ -1,5 +1,5 @@
 //! Every case file solves, replays within 1e-6 and meets the Gurobi objectives its notebook
-//! recorded (`Out::pass`).
+//! recorded, unless the case corrects a notebook bug that changes the optimum (`Out::pass`).
 
 use std::path::Path;
 
@@ -14,7 +14,7 @@ fn every_case_passes() {
         .filter(|p| p.extension().is_some_and(|x| x == "json"))
         .collect();
     paths.sort();
-    assert_eq!(paths.len(), 38);
+    assert_eq!(paths.len(), 40);
     let fail: Vec<String> = paths
         .iter()
         .filter_map(|p| {

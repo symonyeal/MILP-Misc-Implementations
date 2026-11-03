@@ -105,8 +105,13 @@ def oracle(nb):
     return out
 
 
-def case(name, nb, data, orc, note=None, rtol=None):
-    d = {"case": name, "source": f"{SRC}/blob/master/{nb}", "oracle": orc}
+def case(name, nb, data, orc, note=None, rtol=None, fixed=False):
+    """A case file. `fixed`: the port corrects a notebook bug that changes the optimum, so Gurobi's
+    objectives are kept under "gurobi" (for the test that the notebook's rows reproduce them), not as
+    the oracle."""
+    d = {"case": name, "source": f"{SRC}/blob/master/{nb}", "oracle": [] if fixed else orc}
+    if fixed:
+        d["gurobi"] = orc
     if rtol:
         d["rtol"] = rtol
     if note:
@@ -735,6 +740,37 @@ def covid(r):
     return [case("covid", nb, d, [o]) for d, o in zip(data, oracle(r / nb))]
 
 
+def rental(r, k):
+    nb = f"car_rental/car_rental_{k}.ipynb"
+    g = params(r / nb)
+    dep, days, rd = g["depots"], g["days"], g["rentDays"]
+    data = {
+        "depots": dep,
+        "repair": [dep.index(d) for d in g["RD"]],
+        "demand": [[g["demand"][d, t] for t in days] for d in dep],
+        "cap": [g["capacity"][d] for d in dep],
+        "share": [g["pctRent"][x] for x in rd],
+        "cost": [g["costMarginal"][x] for x in rd],
+        "same": [g["priceSameD"][x] for x in rd],
+        "other": [g["priceOtherD"][x] for x in rd],
+        "p": [[g["pctFromToD"][a, b] for b in dep] for a in dep],
+        "c": [[g["cstFromToD"][a, b] for b in dep] for a in dep],
+        "undamaged": g["pctUndamaged"],
+        "fee": g["damagedFee"],
+        "own": g["cstOwn"],
+    }
+    if k == 2:
+        # The notebook's rows: +5 repairs a day per expansion, B2 after B1, M2 after M1, at most 3.
+        e = {
+            "Birmingham": ["cstExpCapB1", "cstExpCapB2"],
+            "Manchester": ["cstExpCapM1", "cstExpCapM2"],
+            "Plymouth": ["cstExpCapP"],
+        }
+        data |= {"expand": [[g[c] for c in e.get(d, [])] for d in dep], "step": 5, "kmax": 3}
+    note = "the notebook's damaged-out row at a repair depot sums transfers to non-repair depots; the port sums those to repair depots, as the notebook's formulation states"
+    return case("rental", nb, data, oracle(r / nb), note, fixed=k == 2)
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -786,6 +822,8 @@ def main():
         "electrical_power_1": power(r, 1),
         "electrical_power_2": power(r, 2),
         "resource_assignment": rap(r),
+        "car_rental_1": rental(r, 1),
+        "car_rental_2": rental(r, 2),
     }
     for k, d in enumerate(covid(r), 1):
         cases[f"covid19_facility_{k}"] = d

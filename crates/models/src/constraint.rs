@@ -6,7 +6,8 @@
 //! the same 0–1 solutions as the original row: every minimal cover R of the original must
 //! violate it (Σ_{i∈R} b_i ≥ b_0 + 1) and every maximal feasible set C satisfy it
 //! (Σ_{i∈C} b_i ≤ b_0). The sets are the notebook's; so is the objective, b_0 − b_3 − b_5, which
-//! reflects the variables the notebook complemented. An LP, b ≥ 0 continuous, as the notebook.
+//! reflects the variables the notebook complemented. Williams asks for integer coefficients, so b is
+//! integer; the notebook's LP relaxation happens to reach the same integral optimum.
 
 use std::fmt::Write;
 
@@ -26,7 +27,7 @@ pub struct Data {
 pub fn model(d: &Data) -> Model {
     let mut m = Model::new(false);
     for _ in 0..d.n {
-        m.var(0.0, INF, 0.0);
+        m.int(0.0, INF, 0.0);
     }
     for &(j, c) in &d.obj {
         m.c[j] = c;
