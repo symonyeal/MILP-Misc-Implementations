@@ -1,0 +1,26 @@
+{
+ "case": "avocado",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/price_optimization/price_optimization.ipynb",
+ "oracle": [
+   [42.5082914254, 42.51093705635]
+  ],
+ "note": "demand coefficients refit by OLS over 3024 weekly rows (numpy lstsq), as the notebook's smf.ols on the full data",
+ "data": {
+  "supply": 30,
+  "waste": 0.1,
+  "pmax": 2,
+  "year": 2022,
+  "peak": 1,
+  "fit": {"intercept": 5.439310052165051, "price": -2.2037701048902365, "year": 0.16076930231844488, "peak": 0.5485105058308413},
+  "regions": [
+    {"name": "Great_Lakes", "shift": 0.0, "transport": 0.3, "lo": 2.06357351, "hi": 7.0947647300000005},
+    {"name": "Midsouth", "shift": -0.24269315367791766, "transport": 0.1, "lo": 1.8454431299999998, "hi": 6.168571610000001},
+    {"name": "Northeast", "shift": 1.4330198366431963, "transport": 0.4, "lo": 2.36442449, "hi": 8.83640622},
+    {"name": "Northern_New_England", "shift": -3.0192437906379155, "transport": 0.5, "lo": 0.2196899, "hi": 0.91798395},
+    {"name": "SouthCentral", "shift": 1.7138120739734266, "transport": 0.3, "lo": 3.68713018, "hi": 10.32317459},
+    {"name": "Southeast", "shift": 0.5839901666611272, "transport": 0.2, "lo": 2.1977637000000003, "hi": 7.81047462},
+    {"name": "West", "shift": 2.6017994486412315, "transport": 0.2, "lo": 3.26010217, "hi": 11.27474911},
+    {"name": "Plains", "shift": -1.815032872390454, "transport": 0.2, "lo": 1.05893809, "hi": 3.57549921}
+   ]
+ }
+}

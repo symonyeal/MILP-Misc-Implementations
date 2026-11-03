@@ -305,6 +305,97 @@ def portfolio(r):
     return case("portfolio", nb, data, oracle(r / nb), note, rtol=5e-5)
 
 
+def avocado(r):
+    """The notebook's demand model, refit: OLS of units_sold (millions) on price, year_index,
+    peak (months 2-7) and region with treatment coding (base Great_Lakes), over conventional
+    avocados in its eight regions, both CSV files. statsmodels' `smf.ols` fits the same model."""
+    import numpy as np
+
+    nb = "price_optimization/price_optimization.ipynb"
+    regions = [
+        "Great_Lakes",
+        "Midsouth",
+        "Northeast",
+        "Northern_New_England",
+        "SouthCentral",
+        "Southeast",
+        "West",
+        "Plains",
+    ]
+    rows = []
+    for f in ("HABdata_2019_2022.csv", "kaggledata_till2018.csv"):
+        with open(r / "price_optimization" / f, encoding="utf-8", newline="") as h:
+            for x in csv.DictReader(h):
+                if x["type"] != "Conventional" or x["region"] not in regions:
+                    continue
+                mo, _, yy = x["date"].split()[0].split("/")
+                rows.append(
+                    (
+                        float(x["units_sold"]) / 1e6,
+                        float(x["price"]),
+                        int(yy) + 2000 - 2015,
+                        2 <= int(mo) <= 7,
+                        x["region"],
+                    )
+                )
+    base = sorted(regions)
+    X = np.array([[1, p, yi, pk] + [float(g == b) for b in base[1:]] for _, p, yi, pk, g in rows])
+    y = np.array([u for u, *_ in rows])
+    beta = np.linalg.lstsq(X, y, rcond=None)[0]
+    lo = {g: min(u for u, *_, h in rows if h == g) for g in regions}
+    hi = {g: max(u for u, *_, h in rows if h == g) for g in regions}
+    shift = dict(zip(base, [0.0] + list(beta[4:])))
+    transport = {
+        "Great_Lakes": 0.3,
+        "Midsouth": 0.1,
+        "Northeast": 0.4,
+        "Northern_New_England": 0.5,
+        "SouthCentral": 0.3,
+        "Southeast": 0.2,
+        "West": 0.2,
+        "Plains": 0.2,
+    }
+    data = {
+        "supply": 30,
+        "waste": 0.1,
+        "pmax": 2,
+        "year": 2022,
+        "peak": 1,
+        "fit": {"intercept": beta[0], "price": beta[1], "year": beta[2], "peak": beta[3]},
+        "regions": [
+            {"name": g, "shift": shift[g], "transport": transport[g], "lo": lo[g], "hi": hi[g]} for g in regions
+        ],
+    }
+    note = f"demand coefficients refit by OLS over {len(rows)} weekly rows (numpy lstsq), as the notebook's smf.ols on the full data"
+    return case("avocado", nb, data, oracle(r / nb)[:1], note)
+
+
+def best_subset(r):
+    """Boston housing, response MV on the 13 other columns. The notebook records no objective, so
+    the oracle is computed here: for each k, the least residual sum of squares over every subset of
+    k features (with an intercept), by numpy least squares over all 2^13 - 1 subsets."""
+    from itertools import combinations
+
+    import numpy as np
+
+    nb = "linear_regression/l0_regression.ipynb"
+    with open(r / "linear_regression/boston.csv", encoding="utf-8", newline="") as h:
+        rows = list(csv.reader(h))
+    names, X = rows[0], np.array(rows[1:], dtype=float)
+    A, y = X[:, :-1], X[:, -1]
+    best = []
+    for k in range(1, A.shape[1] + 1):
+        rss = []
+        for S in combinations(range(A.shape[1]), k):
+            Z = np.column_stack([np.ones(len(y)), A[:, S]])
+            e = y - Z @ np.linalg.lstsq(Z, y, rcond=None)[0]
+            rss.append(float(e @ e))
+        best.append(min(rss))
+    data = {"features": names[:-1], "response": names[-1], "x": A.tolist(), "y": y.tolist()}
+    note = "oracle: least RSS for k = 1..13 features by exhaustive enumeration (numpy lstsq), not a Gurobi log"
+    return case("subset", nb, data, best, note)
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -338,6 +429,8 @@ def main():
         "pooling": pooling(r),
         "agricultural_pricing": agricultural(r),
         "portfolio": portfolio(r),
+        "avocado_pricing": avocado(r),
+        "best_subset": best_subset(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")

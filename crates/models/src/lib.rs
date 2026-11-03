@@ -13,6 +13,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 pub mod agriprice;
+pub mod avocado;
 pub mod colour;
 pub mod cover;
 pub mod cutstock;
@@ -25,6 +26,7 @@ pub mod opencast;
 pub mod playlist;
 pub mod pooling;
 pub mod portfolio;
+pub mod subset;
 pub mod tsp;
 pub mod workforce;
 
@@ -112,6 +114,7 @@ fn de<D: DeserializeOwned>(v: Value) -> Result<D, String> {
 pub fn run(case: &str, v: Value) -> Result<Out, String> {
     Ok(match case {
         "agriprice" => agriprice::run(&de(v)?),
+        "avocado" => avocado::run(&de(v)?),
         "colour" => colour::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
@@ -124,6 +127,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "playlist" => playlist::run(&de(v)?),
         "pooling" => pooling::run(&de(v)?),
         "portfolio" => portfolio::run(&de(v)?),
+        "subset" => subset::run(&de(v)?),
         "tsp" => tsp::run(&de(v)?),
         "workforce" => workforce::run(&de(v)?),
         _ => return Err(format!("unknown case {case}")),
@@ -134,6 +138,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
 pub fn model(case: &str, v: Value) -> Result<Model, String> {
     Ok(match case {
         "agriprice" => agriprice::model(&de(v)?),
+        "avocado" => avocado::model(&de(v)?),
         "colour" => colour::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
@@ -146,6 +151,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "playlist" => playlist::model(&de(v)?, false).0,
         "pooling" => pooling::model(&de(v)?, true).0,
         "portfolio" => portfolio::model(&de(v)?, None),
+        "subset" => subset::model(&de(v)?, 1).0,
         "tsp" => tsp::model(&de(v)?).0,
         "workforce" => workforce::model(&de(v)?).0,
         _ => return Err(format!("unknown case {case}")),
