@@ -1,0 +1,44 @@
+{
+ "case": "factory",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/factory_planning/factory_planning_2.ipynb",
+ "oracle": [108855.0],
+ "data": {
+  "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+  "products": [
+    {"name": "Prod1", "profit": 10},
+    {"name": "Prod2", "profit": 6},
+    {"name": "Prod3", "profit": 8},
+    {"name": "Prod4", "profit": 4},
+    {"name": "Prod5", "profit": 11},
+    {"name": "Prod6", "profit": 9},
+    {"name": "Prod7", "profit": 3}
+   ],
+  "machines": [
+    {"name": "grinder", "installed": 4},
+    {"name": "vertDrill", "installed": 2},
+    {"name": "horiDrill", "installed": 3},
+    {"name": "borer", "installed": 1},
+    {"name": "planer", "installed": 1}
+   ],
+  "time": [
+    [0.5, 0.7, 0, 0, 0.3, 0.2, 0.5],
+    [0.1, 0.2, 0, 0.3, 0, 0.6, 0],
+    [0.2, 0, 0.8, 0, 0, 0, 0.6],
+    [0.05, 0.03, 0, 0.07, 0.1, 0, 0.08],
+    [0, 0, 0.01, 0, 0.05, 0, 0.05]
+   ],
+  "sales": [
+    [500, 1000, 300, 300, 800, 200, 100],
+    [600, 500, 200, 0, 400, 300, 150],
+    [300, 600, 0, 0, 500, 400, 100],
+    [200, 300, 400, 500, 200, 0, 100],
+    [0, 100, 500, 100, 1000, 300, 0],
+    [500, 500, 100, 300, 1100, 500, 60]
+   ],
+  "hold": 0.5,
+  "smax": 100,
+  "target": 50,
+  "hours": 384,
+  "maint": [2, 2, 3, 1, 1]
+ }
+}

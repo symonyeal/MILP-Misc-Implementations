@@ -1,0 +1,56 @@
+{
+ "case": "network",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/supply_network_design/supply_network_design_1.ipynb",
+ "oracle": [198500.0],
+ "data": {
+  "factories": [
+    {"name": "Liverpool", "supply": 150000},
+    {"name": "Brighton", "supply": 200000}
+   ],
+  "depots": [
+    {"name": "Newcastle", "cap": 70000, "open": null, "must": false},
+    {"name": "Birmingham", "cap": 50000, "open": null, "must": false},
+    {"name": "London", "cap": 100000, "open": null, "must": false},
+    {"name": "Exeter", "cap": 40000, "open": null, "must": false}
+   ],
+  "customers": [
+    {"name": "C1", "demand": 50000},
+    {"name": "C2", "demand": 10000},
+    {"name": "C3", "demand": 40000},
+    {"name": "C4", "demand": 35000},
+    {"name": "C5", "demand": 60000},
+    {"name": "C6", "demand": 20000}
+   ],
+  "arcs": [
+    ["Liverpool", "Newcastle", 0.5],
+    ["Liverpool", "Birmingham", 0.5],
+    ["Liverpool", "London", 1.0],
+    ["Liverpool", "Exeter", 0.2],
+    ["Liverpool", "C1", 1.0],
+    ["Liverpool", "C3", 1.5],
+    ["Liverpool", "C4", 2.0],
+    ["Liverpool", "C6", 1.0],
+    ["Brighton", "Birmingham", 0.3],
+    ["Brighton", "London", 0.5],
+    ["Brighton", "Exeter", 0.2],
+    ["Brighton", "C1", 2.0],
+    ["Newcastle", "C2", 1.5],
+    ["Newcastle", "C3", 0.5],
+    ["Newcastle", "C5", 1.5],
+    ["Newcastle", "C6", 1.0],
+    ["Birmingham", "C1", 1.0],
+    ["Birmingham", "C2", 0.5],
+    ["Birmingham", "C3", 0.5],
+    ["Birmingham", "C4", 1.0],
+    ["Birmingham", "C5", 0.5],
+    ["London", "C2", 1.5],
+    ["London", "C3", 2.0],
+    ["London", "C5", 0.5],
+    ["London", "C6", 1.5],
+    ["Exeter", "C3", 0.2],
+    ["Exeter", "C4", 1.5],
+    ["Exeter", "C5", 0.5],
+    ["Exeter", "C6", 1.5]
+   ]
+ }
+}

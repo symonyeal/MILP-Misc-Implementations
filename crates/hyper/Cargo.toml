@@ -1,0 +1,11 @@
+[package]
+name = "hyper"
+description = "Weighted hypergraphs in DeepHypergraph's convention: incidence, degrees, Zhou's operator and ranking, hMETIS export"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true

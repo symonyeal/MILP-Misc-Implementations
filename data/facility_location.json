@@ -1,0 +1,23 @@
+{
+ "case": "facility",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/facility_location/facility_location.ipynb",
+ "oracle": [4.723712908962],
+ "data": {
+  "customers": [
+    [0, 1.5],
+    [2.5, 1.2]
+   ],
+  "sites": [
+    {"at": [0, 0], "f": 3},
+    {"at": [0, 1], "f": 2},
+    {"at": [0, 2], "f": 3},
+    {"at": [1, 0], "f": 1},
+    {"at": [1, 1], "f": 3},
+    {"at": [1, 2], "f": 3},
+    {"at": [2, 0], "f": 4},
+    {"at": [2, 1], "f": 3},
+    {"at": [2, 2], "f": 2}
+   ],
+  "rate": 1
+ }
+}

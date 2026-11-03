@@ -1,0 +1,30 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+license = "Apache-2.0"
+
+[workspace.dependencies]
+milp = { path = "crates/milp" }
+hyper = { path = "crates/hyper" }
+cmake = "0.1.58"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+# The code transcribes the sources' notation: single-letter and short symbols are deliberate.
+many_single_char_names = "allow"
+similar_names = "allow"
+too_many_arguments = "allow"
+needless_range_loop = "allow"
+
+[profile.release]
+debug = false

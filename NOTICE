@@ -1,0 +1,9 @@
+MILP Misc Implementations
+Copyright 2026 symonyeal
+
+The problem statements and instance data in data/ are derived from Gurobi modeling-examples
+(https://github.com/Gurobi/modeling-examples), Copyright Gurobi Optimization, LLC, licensed under
+the Apache License, Version 2.0. The playlist data aggregate that repository's
+music_recommendation/user_playlist_data.csv to (user, artist, track count) triples.
+
+HiGHS (crates/milp/HiGHS, a git submodule) is licensed under the MIT License.

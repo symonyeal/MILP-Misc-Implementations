@@ -1,0 +1,24 @@
+{
+ "case": "cutstock",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/colgen-cutting_stock/colgen-cutting_stock.ipynb",
+ "oracle": [],
+ "note": "the notebook records no objective",
+ "data": {
+  "L": 5600,
+  "pieces": [
+    {"l": 1380, "d": 22},
+    {"l": 1520, "d": 25},
+    {"l": 1560, "d": 12},
+    {"l": 1710, "d": 14},
+    {"l": 1820, "d": 18},
+    {"l": 1880, "d": 18},
+    {"l": 1930, "d": 20},
+    {"l": 2000, "d": 10},
+    {"l": 2050, "d": 12},
+    {"l": 2100, "d": 14},
+    {"l": 2140, "d": 16},
+    {"l": 2150, "d": 18},
+    {"l": 2200, "d": 20}
+   ]
+ }
+}

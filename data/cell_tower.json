@@ -1,0 +1,17 @@
+{
+ "case": "cover",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/cell_tower_coverage/cell_tower.ipynb",
+ "oracle": [7051.0],
+ "data": {
+  "p": [523, 690, 420, 1010, 1200, 850, 400, 1008, 950],
+  "towers": [
+    {"e": [0, 1, 5], "c": 4.2},
+    {"e": [0, 7, 8], "c": 6.1},
+    {"e": [2, 3, 4, 6], "c": 5.2},
+    {"e": [2, 5, 6], "c": 5.5},
+    {"e": [0, 2, 6, 7, 8], "c": 4.8},
+    {"e": [3, 4, 8], "c": 9.2}
+   ],
+  "budget": 20
+ }
+}
