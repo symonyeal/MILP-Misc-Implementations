@@ -15,6 +15,7 @@ use serde_json::Value;
 pub mod agriprice;
 pub mod avocado;
 pub mod colour;
+pub mod comparison;
 pub mod constraint;
 pub mod cover;
 pub mod cutstock;
@@ -25,6 +26,7 @@ pub mod facility;
 pub mod factory;
 pub mod farm;
 pub mod fit;
+pub mod folding;
 pub mod food;
 pub mod logic;
 pub mod manpower;
@@ -127,6 +129,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "agriprice" => agriprice::run(&de(v)?),
         "avocado" => avocado::run(&de(v)?),
         "colour" => colour::run(&de(v)?),
+        "comparison" => comparison::run(&de(v)?),
         "constraint" => constraint::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
@@ -137,6 +140,7 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "farm" => farm::run(&de(v)?),
         "factory" => factory::run(&de(v)?),
         "fit" => fit::run(&de(v)?),
+        "folding" => folding::run(&de(v)?),
         "food" => food::run(&de(v)?),
         "logic" => logic::run(&de(v)?),
         "manpower" => manpower::run(&de(v)?),
@@ -162,6 +166,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "agriprice" => agriprice::model(&de(v)?),
         "avocado" => avocado::model(&de(v)?),
         "colour" => colour::model(&de(v)?),
+        "comparison" => comparison::model(&de(v)?),
         "constraint" => constraint::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
@@ -172,6 +177,7 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "farm" => farm::model(&de(v)?),
         "factory" => factory::model(&de(v)?).0,
         "fit" => fit::model(&de(v)?, false),
+        "folding" => folding::model(&de(v)?).0,
         "food" => food::model(&de(v)?).0,
         "logic" => logic::model(&de(v)?),
         "manpower" => manpower::model(&de(v)?).0,

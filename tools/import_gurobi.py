@@ -623,6 +623,19 @@ def wind(r):
     return case("wind", nb, data, oracle(r / nb))
 
 
+def folding(r):
+    nb = "protein_folding/protein_folding.ipynb"
+    g = params(r / nb)
+    return case("folding", nb, {"n": len(g["acids"]), "phobic": g["h_phobic"]}, oracle(r / nb))
+
+
+def comparison(r):
+    nb = "protein_comparison/protein_comparison.ipynb"
+    g = params(r / nb)
+    data = {"n1": len(g["nodes1"]), "e1": g["edges1"], "n2": len(g["nodes2"]), "e2": g["edges2"]}
+    return case("comparison", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -669,6 +682,8 @@ def main():
         "efficiency_analysis": dea(r),
         "constraint_optimization": constraint_opt(r),
         "offshore_wind": wind(r),
+        "protein_folding": folding(r),
+        "protein_comparison": comparison(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")
