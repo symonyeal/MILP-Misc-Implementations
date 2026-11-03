@@ -270,7 +270,7 @@ def main():
         "playlist": playlist(r),
     }
     for k, d in cases.items():
-        (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8")
+        (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")
         print(k, d["oracle"])
 
 
