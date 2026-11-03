@@ -396,6 +396,44 @@ def best_subset(r):
     return case("subset", nb, data, best, note)
 
 
+def economic(r):
+    nb = "economic_planning/economic_planning.ipynb"
+    g = params(r / nb)
+    I = list(g["industries"])
+    data = {
+        "industries": I,
+        "a": [[g["inout_prod"][i, j] for j in I] for i in I],
+        "b": [[g["inout_cap"][i, j] for j in I] for i in I],
+        "la": [g["labor_prod"][i] for i in I],
+        "lb": [g["labor_extra_cap"][i] for i in I],
+        "s0": [g["stock0"][i] for i in I],
+        "k0": [g["capacity0"][i] for i in I],
+        "d": [g["demand"][i] for i in I],
+    }
+    return case("economic", nb, data, oracle(r / nb))
+
+
+def manpower(r):
+    nb = "manpower_planning/manpower_planning.ipynb"
+    g = params(r / nb)
+    T, S = g["years"], g["skills"]
+    data = {
+        "skills": S,
+        "w0": [g["curr_workforce"][s] for s in S],
+        "need": [[g["demand"][t, s] for s in S] for t in T],
+        "hire": [[g["max_hiring"][t, s] for s in S] for t in T],
+        "rookie": [g["rookie_attrition"][s] for s in S],
+        "veteran": [g["veteran_attrition"][s] for s in S],
+        "demoted": g["demoted_attrition"],
+        "over": g["max_overmanning"],
+        "part": g["max_parttime"],
+        "part_w": g["parttime_cap"],
+        "train12": g["max_train_unskilled"],
+        "train23": g["max_train_semiskilled"],
+    }
+    return case("manpower", nb, data, oracle(r / nb))
+
+
 def dump(v, pad=""):
     """JSON with one key per line at the top two levels and one record per line in lists."""
     if isinstance(v, dict) and len(pad) < 2:
@@ -431,6 +469,8 @@ def main():
         "portfolio": portfolio(r),
         "avocado_pricing": avocado(r),
         "best_subset": best_subset(r),
+        "economic_planning": economic(r),
+        "manpower_planning": manpower(r),
     }
     for k, d in cases.items():
         (out / f"{k}.json").write_text(dump(d) + "\n", encoding="utf-8", newline="\n")

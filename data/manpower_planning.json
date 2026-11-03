@@ -1,0 +1,27 @@
+{
+ "case": "manpower",
+ "source": "https://github.com/Gurobi/modeling-examples/blob/master/manpower_planning/manpower_planning.ipynb",
+ "oracle": [841.796875],
+ "data": {
+  "skills": ["s1", "s2", "s3"],
+  "w0": [2000, 1500, 1000],
+  "need": [
+    [1000, 1400, 1000],
+    [500, 2000, 1500],
+    [0, 2500, 2000]
+   ],
+  "hire": [
+    [500, 800, 500],
+    [500, 800, 500],
+    [500, 800, 500]
+   ],
+  "rookie": [0.25, 0.2, 0.1],
+  "veteran": [0.1, 0.05, 0.05],
+  "demoted": 0.5,
+  "over": 150,
+  "part": 50,
+  "part_w": 0.5,
+  "train12": 200,
+  "train23": 0.25
+ }
+}

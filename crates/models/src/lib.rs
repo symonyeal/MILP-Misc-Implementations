@@ -17,10 +17,12 @@ pub mod avocado;
 pub mod colour;
 pub mod cover;
 pub mod cutstock;
+pub mod economic;
 pub mod facility;
 pub mod factory;
 pub mod fit;
 pub mod food;
+pub mod manpower;
 pub mod network;
 pub mod opencast;
 pub mod playlist;
@@ -118,10 +120,12 @@ pub fn run(case: &str, v: Value) -> Result<Out, String> {
         "colour" => colour::run(&de(v)?),
         "cover" => cover::run(&de(v)?),
         "cutstock" => cutstock::run(&de(v)?),
+        "economic" => economic::run(&de(v)?),
         "facility" => facility::run(&de(v)?),
         "factory" => factory::run(&de(v)?),
         "fit" => fit::run(&de(v)?),
         "food" => food::run(&de(v)?),
+        "manpower" => manpower::run(&de(v)?),
         "network" => network::run(&de(v)?),
         "opencast" => opencast::run(&de(v)?),
         "playlist" => playlist::run(&de(v)?),
@@ -142,10 +146,12 @@ pub fn model(case: &str, v: Value) -> Result<Model, String> {
         "colour" => colour::model(&de(v)?),
         "cover" => cover::model(&de(v)?),
         "cutstock" => cutstock::model(&de(v)?),
+        "economic" => economic::model(&de(v)?),
         "facility" => facility::model(&de(v)?),
         "factory" => factory::model(&de(v)?).0,
         "fit" => fit::model(&de(v)?, false),
         "food" => food::model(&de(v)?).0,
+        "manpower" => manpower::model(&de(v)?).0,
         "network" => network::model(&de(v)?).0,
         "opencast" => opencast::model(&de(v)?),
         "playlist" => playlist::model(&de(v)?, false).0,
