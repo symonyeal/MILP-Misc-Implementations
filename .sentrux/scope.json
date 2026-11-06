@@ -1,0 +1,3 @@
+{
+  "include": ["Cargo.toml", "crates/*/Cargo.toml", "crates/*/src/**/*.rs"]
+}

@@ -1,0 +1,13 @@
+# Advisory first-party Rust scan; model feasibility and oracle checks remain acceptance.
+[constraints]
+max_cycles = 0
+
+[[layers]]
+name = "adapters"
+paths = ["crates/milp/src/**", "crates/hyper/src/**"]
+order = 1
+
+[[layers]]
+name = "models"
+paths = ["crates/models/src/**"]
+order = 0
