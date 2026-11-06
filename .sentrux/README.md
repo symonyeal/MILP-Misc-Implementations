@@ -20,4 +20,7 @@ The runtime is pinned to 0.5.7 with analytics disabled. Other machines need that
 its grammars and the shared helper. Direct repository scans use a different scope.
 
 The trial rejected a planted reverse crate-root import. Qualified cross-crate imports are
-not reliably resolved by this release, so keep this advisory; no CI gate is added.
+not reliably resolved by this release. The shared runner now first checks Cargo's declared
+normal/build workspace dependencies against these layers, including target-specific declarations.
+It fails on forbidden dependencies or unassigned crates, regardless of import spelling; dev
+dependencies are excluded. Sentrux metrics and within-crate graphs remain advisory; no CI gate is added.
