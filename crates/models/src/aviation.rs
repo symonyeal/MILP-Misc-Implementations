@@ -51,10 +51,33 @@ pub struct Data {
     pub aircraft: Vec<Aircraft>,
 }
 
+/// The arcs of one aircraft's route graph: source n and sink n + 1 beside flights 0..n, with the
+/// overnight rule (`land`) and, under `notebook`, the notebook's own source/sink and clock rules.
+fn flight_arcs(a: &Aircraft, notebook: bool) -> Vec<(usize, usize)> {
+    const DAY: u32 = 24 * 60;
+    let n = a.flights.len();
+    let land = |f: &Flight| if notebook || f.arr >= f.dep { f.arr } else { f.arr + DAY };
+    // Nodes 0..n are flights, n the source, n + 1 the sink.
+    let mut arcs = vec![(n, n + 1)];
+    for (i, f) in a.flights.iter().enumerate() {
+        if f.ori == a.start && (!notebook || f.dep > 0) {
+            arcs.push((n, i));
+        }
+        if f.des == a.end && (!notebook || land(f) < DAY - 1) {
+            arcs.push((i, n + 1));
+        }
+        for (j, g) in a.flights.iter().enumerate() {
+            if i != j && f.des == g.ori && land(f) < g.dep {
+                arcs.push((i, j));
+            }
+        }
+    }
+    arcs
+}
+
 /// The model and the x column of each flight, per aircraft. `notebook`: the notebook's rows,
 /// without x columns (and their rows) for source and sink, which never pay.
 pub fn model(d: &Data, notebook: bool) -> (Model, Vec<Vec<usize>>) {
-    const DAY: u32 = 24 * 60;
     let ap = Names::new(d.airports.iter().map(String::as_str));
     let at = |s: &str| ap.0.get(s).copied();
     let mut m = Model::new(false);
@@ -63,22 +86,7 @@ pub fn model(d: &Data, notebook: bool) -> (Model, Vec<Vec<usize>>) {
     let mut xs = Vec::new();
     for a in &d.aircraft {
         let n = a.flights.len();
-        let land = |f: &Flight| if notebook || f.arr >= f.dep { f.arr } else { f.arr + DAY };
-        // Nodes 0..n are flights, n the source, n + 1 the sink.
-        let mut arcs = vec![(n, n + 1)];
-        for (i, f) in a.flights.iter().enumerate() {
-            if f.ori == a.start && (!notebook || f.dep > 0) {
-                arcs.push((n, i));
-            }
-            if f.des == a.end && (!notebook || land(f) < DAY - 1) {
-                arcs.push((i, n + 1));
-            }
-            for (j, g) in a.flights.iter().enumerate() {
-                if i != j && f.des == g.ori && land(f) < g.dep {
-                    arcs.push((i, j));
-                }
-            }
-        }
+        let arcs = flight_arcs(a, notebook);
         let y: Vec<usize> = arcs.iter().map(|_| m.bin(0.0)).collect();
         let out = |v: usize| arcs.iter().zip(&y).filter(move |(e, _)| e.0 == v).map(|(_, &j)| (j, 1.0));
         let inn = |v: usize| arcs.iter().zip(&y).filter(move |(e, _)| e.1 == v).map(|(_, &j)| (j, 1.0));

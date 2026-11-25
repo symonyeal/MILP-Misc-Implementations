@@ -813,6 +813,14 @@ def campaign(r):
     return case("campaign", nb, data, oracle(r / nb))
 
 
+def relief_roles(nodes):
+    """Supplier, demand and transit roles encoded by the source node-name suffixes."""
+    sup = {n["Name"][:-2] for n in nodes if n["Name"].endswith(" S")}
+    dem = {n["Name"][:-2]: float(n["Demand"]) for n in nodes if n["Name"].endswith("D")}
+    hub = {n["Name"][:-3] for n in nodes if n["Name"].endswith("TS")}
+    return sup, dem, hub
+
+
 def relief(r):
     """The notebook reads its CSVs by URL through pandas; this reads the checkout's copies with the
     same rules: a name's suffix (" S", "TS", " D") gives its role, a repeated link keeps its last
@@ -824,9 +832,7 @@ def relief(r):
             return list(csv.DictReader(h))
 
     nodes = rows("node_types.csv")
-    sup = {n["Name"][:-2] for n in nodes if n["Name"].endswith(" S")}
-    dem = {n["Name"][:-2]: float(n["Demand"]) for n in nodes if n["Name"].endswith("D")}
-    hub = {n["Name"][:-3] for n in nodes if n["Name"].endswith("TS")}
+    sup, dem, hub = relief_roles(nodes)
     t = {(e["A"], e["B"]): float(e["tCost"]) for e in rows("edge_costs.csv")}
     req = rows("nutrient_requirements.csv")[0]
     nut = [u for u in req if u != "Type"]
